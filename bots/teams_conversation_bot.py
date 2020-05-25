@@ -31,6 +31,10 @@ class TeamsConversationBot(TeamsActivityHandler):
         if turn_context.activity.text == "Delete":
             await self._delete_card_activity(turn_context)
             return
+        
+        if turn_context.activity.text == "ShowMembers":
+            await self.return_members(turn_context)
+            return
 
         card = HeroCard(
             title="Welcome Card",
@@ -53,6 +57,13 @@ class TeamsConversationBot(TeamsActivityHandler):
             MessageFactory.attachment(CardFactory.hero_card(card))
         )
         return
+    
+    async def return_members(self, turn_context: TurnContext):
+        members = await TeamsInfo.get_team_members(turn_context)
+        return_text = ''
+        for member in members:
+            return_text += f'{member.id} {member.name}   \n'
+        await turn_context.send_activity(return_text)
 
     async def _mention_activity(self, turn_context: TurnContext):
         mention = Mention(
