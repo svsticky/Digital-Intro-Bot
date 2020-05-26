@@ -12,3 +12,6 @@ class DefaultConfig:
     PORT = 3978
     APP_ID = os.getenv("MicrosoftAppId")
     APP_PASSWORD = os.getenv("MicrosoftAppPassword")
+    MENTOR_PASSWORD = os.getenv("MentorPassword")
+    INTRO_PASSWORD = os.getenv("IntroPassword")
+    COMMITTEE_PASSWORD = os.getenv("CommitteePassword")

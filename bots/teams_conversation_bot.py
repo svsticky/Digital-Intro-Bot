@@ -5,16 +5,43 @@ from botbuilder.core import CardFactory, TurnContext, MessageFactory
 from botbuilder.core.teams import TeamsActivityHandler, TeamsInfo
 from botbuilder.schema import CardAction, HeroCard, Mention, ConversationParameters
 from botbuilder.schema._connector_client_enums import ActionTypes
+import modules.database as db
+from config import DefaultConfig
 
 
 class TeamsConversationBot(TeamsActivityHandler):
     def __init__(self, app_id: str, app_password: str):
         self._app_id = app_id
         self._app_password = app_password
+        self.CONFIG = DefaultConfig()
 
     async def on_message_activity(self, turn_context: TurnContext):
         TurnContext.remove_recipient_mention(turn_context.activity)
         turn_context.activity.text = turn_context.activity.text.strip()
+
+        if turn_context.activity.text.startswith("AddCommittee"):
+            await self.add_committee(turn_context)
+            return
+        
+        if turn_context.activity.text.startswith("AddMentorGroup"):
+            await self.add_mentor_group(turn_context)
+            return
+
+        if turn_context.activity.text.startswith("RegisterIntro"):
+            await self.register_intro(turn_context)
+            return
+        
+        if turn_context.activity.text.startswith("RegisterMentor"):
+            await self.register_mentor(turn_context)
+            return
+
+        if turn_context.activity.text.startswith("RegisterCommitteeMember"):
+            await self.register_committee_member(turn_context)
+            return
+
+        if turn_context.activity.text == "GetIntro":
+            await self.get_intro(turn_context)
+            return
 
         if turn_context.activity.text == "MentionMe":
             await self._mention_activity(turn_context)
@@ -58,6 +85,111 @@ class TeamsConversationBot(TeamsActivityHandler):
         )
         return
     
+    async def get_intro(self, turn_context: TurnContext):
+        return_text = ''
+        session = db.Session()
+
+        for user in session.query(db.IntroUser).all():
+            return_text = f'{user.user_name}   \n'
+        
+        await turn_context.send_activity(return_text)
+
+    async def add_committee(self, turn_context: TurnContext):
+        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+
+        if(db.getFirst(db.IntroUser, 'user_teams_id', user.id)):
+            try:
+                committee_name = turn_context.activity.text.split()[1]
+            except IndexError:
+                await turn_context.send_activity("You need to specify the name for the committee")
+                return
+            committee = db.Committee(name=committee_name, info="")
+            db.dbMerge(committee)
+            await turn_context.send_activity(f"Committee '{committee_name}' was successfully added!")
+        else:
+            await turn_context.send_activity("You are not allowed to perform this task! You need to be an Intro Member.")
+
+    async def add_mentor_group(self, turn_context: TurnContext):
+        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+
+        if(db.getFirst(db.IntroUser, 'user_teams_id', user.id)):
+            try:
+                mentor_group_name = turn_context.activity.text.split()[1]
+            except IndexError:
+                await turn_context.send_activity("You need to specify the name for the mentorgroup")
+                return
+            mentor_group = db.MentorGroup(name=mentor_group_name)
+            db.dbMerge(mentor_group)
+            await turn_context.send_activity(f"Mentor Group '{mentor_group_name}' was successfully added!")
+        else:
+            await turn_context.send_activity("You are not allowed to perform this task! You need to be an Intro Member.")
+
+    async def register_intro(self, turn_context: TurnContext):        
+        try:
+            intro_password = turn_context.activity.text.split()[1]
+        except IndexError:
+            await turn_context.send_activity("Wrong password! You are not cool enough to be Intro...")
+            return
+
+        if intro_password == self.CONFIG.INTRO_PASSWORD:
+            sender = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+            new_user = db.IntroUser(user_teams_id=sender.id,
+                                    user_name=sender.name)
+            db.dbMerge(new_user)
+            await turn_context.send_activity("You have been successfully registered as an Intro Member")
+        else:
+            await turn_context.send_activity("Wrong password! You are not cool enough to be Intro...")
+
+    async def register_mentor(self, turn_context: TurnContext):
+        command_info = turn_context.activity.text.split()
+
+        try:
+            mentor_password = command_info[1]
+            mentor_group_name = command_info[2]
+        except IndexError:
+            await turn_context.send_activity("Wrong command style. It needs to look like this: RegisterMentor <password> <mentor_group_name>.")
+        
+        if mentor_password == self.CONFIG.MENTOR_PASSWORD:
+            sender = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+            mentor_group = db.getFirst(db.MentorGroup, 'name', mentor_group_name)
+
+            if mentor_group:
+                new_user = db.MentorUser(user_teams_id=sender.id,
+                                        user_name=sender.name,
+                                        mg_id=mentor_group.mg_id)
+                db.dbMerge(new_user)
+                await turn_context.send_activity(f"You have been successfully registered as a Mentor of group '{mentor_group_name}''")
+            else:
+                await turn_context.send_activity('This committee does not exist yet. Please contact an Intro member if you think this is not right.')
+        else:
+            turn_context.send_activity('Wrong password!')
+
+    async def register_committee_member(self, turn_context: TurnContext):
+        command_info = turn_context.activity.text.split()
+
+        try:
+            committee_password = command_info[1]
+            committee_name = command_info[2]
+        except IndexError:
+            await turn_context.send_activity("Wrong command style. It needs to look like this: RegisterCommitteeMember <password> <committee>.")
+            return
+
+        if committee_password == self.CONFIG.COMMITTEE_PASSWORD:
+            sender = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+            committee = db.getFirst(db.Committee, 'name', committee_name)
+
+            if committee:
+                new_user = db.CommitteeUser(user_teams_id=sender.id,
+                                            user_name=sender.name,
+                                            committee_id=committee.committee_id)
+                db.dbMerge(new_user)
+                await turn_context.send_activity(f'You have been successfully registered as a Committee Member of {committee_name}')
+            else:
+                await turn_context.send_activity('This committee does not exist yet. Please contact an Intro member if you think this is not right.')
+        else:
+            await turn_context.send_activity('Wrong password!')
+        
+
     async def return_members(self, turn_context: TurnContext):
         members = await TeamsInfo.get_team_members(turn_context)
         return_text = ''
