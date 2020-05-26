@@ -39,6 +39,14 @@ class TeamsConversationBot(TeamsActivityHandler):
             await self.register_committee_member(turn_context)
             return
 
+        if turn_context.activity.text == "AvailableCommittees":
+            await self.available_committees(turn_context)
+            return
+
+        if turn_context.activity.text.startswith("ChooseCommittee"):
+            await self.choose_committee(turn_context)
+            return
+
         if turn_context.activity.text == "GetIntro":
             await self.get_intro(turn_context)
             return
@@ -189,6 +197,28 @@ class TeamsConversationBot(TeamsActivityHandler):
         else:
             await turn_context.send_activity('Wrong password!')
         
+    async def available_committees(self, turn_context: TurnContext):
+        committees = db.getAll(db.Committee, 'occupied', False)
+
+        card = CardFactory.hero_card(
+            HeroCard(
+                title="Available Committees",
+                text='Choose the committee that you want to meet next!',
+                buttons=[
+                    CardAction(
+                        type=ActionTypes.message_back,
+                        title=committee.name,
+                        text=f"ChooseCommittee {committee.name}"
+                    ) for committee in committees
+                ],
+            )
+        )
+
+        choosing_activity = MessageFactory.attachment(card)
+        await turn_context.send_activity(choosing_activity)
+    
+    async def choose_committee(self, turn_context: TurnContext):
+        pass
 
     async def return_members(self, turn_context: TurnContext):
         members = await TeamsInfo.get_team_members(turn_context)

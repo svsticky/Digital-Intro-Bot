@@ -17,6 +17,12 @@ def getFirst(table, column, value):
     session.close()
     return return_value
 
+def getAll(table, column, value):
+    session = Session()
+    return_value = session.query(table).filter_by(**{column: value}).all()
+    session.close()
+    return return_value
+
 def dbInsert(db_object):
     """Inserts object"""
     if(db_object):
