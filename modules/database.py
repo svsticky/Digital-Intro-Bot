@@ -39,6 +39,7 @@ def dbMerge(db_object):
         session.commit()
         session.close()
 
+
 #TODO: build database tables
 
 class User(SQLAlchemyBase):
@@ -86,8 +87,9 @@ class IntroUser(User):
 class Committee(SQLAlchemyBase):
     __tablename__ = 'committee'
     committee_id = sa.Column(sa.Integer, primary_key=True)
-    name = sa.Column(sa.String(50))
+    name = sa.Column(sa.String(50), unique=True)
     info = sa.Column(sa.String(50))
+    channel_id = sa.Column(sa.String(50))
     members = relationship("CommitteeUser")
     occupied = sa.Column(sa.Boolean, default=False)
 
@@ -95,7 +97,8 @@ class Committee(SQLAlchemyBase):
 class MentorGroup(SQLAlchemyBase):
     __tablename__ = 'mentor_group'
     mg_id = sa.Column(sa.Integer, primary_key=True)
-    name = sa.Column(sa.String(50))
+    name = sa.Column(sa.String(50), unique=True)
+    channel_id = sa.Column(sa.String(50))
     parents = relationship("MentorUser")
     occupied = sa.Column(sa.Boolean, default=False)
 
@@ -105,7 +108,6 @@ class Visit(SQLAlchemyBase):
     visit_id = sa.Column(sa.Integer, primary_key=True)
     mg_id = sa.Column(sa.String(50), index=True)
     committee_id = sa.Column(sa.String(50))
-    visited = sa.Column(sa.Boolean, default=False)
 
 
 @event.listens_for(User, 'mapper_configured')

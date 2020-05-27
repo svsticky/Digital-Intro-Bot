@@ -108,4 +108,5 @@ dmypy.json
 .pyre/
 
 .env
+data/database.sqlite
 # End of https://www.gitignore.io/api/python
