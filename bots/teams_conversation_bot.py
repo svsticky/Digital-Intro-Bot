@@ -118,6 +118,10 @@ class TeamsConversationBot(TeamsActivityHandler):
             await turn_context.send_activity("You are not allowed to perform this task! You need to be an Intro Member.")
 
     async def register_committee(self, turn_context: TurnContext):
+        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+        if not db.getFirst(db.IntroUser, 'user_teams_id', user.id):
+            await turn_context.send_activity("You do not have the rights to perform this action")
+
         command_info = turn_context.activity.text.split()
 
         try:
@@ -164,6 +168,10 @@ class TeamsConversationBot(TeamsActivityHandler):
             await turn_context.send_activity("You are not allowed to perform this task! You need to be an Intro Member.")
 
     async def register_mentor_group(self, turn_context: TurnContext):
+        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+        if not db.getFirst(db.IntroUser, 'user_teams_id', user.id):
+            await turn_context.send_activity("You do not have the rights to perform this action")
+            
         command_info = turn_context.activity.text.split()
 
         try:
@@ -362,6 +370,7 @@ class TeamsConversationBot(TeamsActivityHandler):
         await turn_context.update_activity(updated_activity)
 
     async def _message_all_members(self, turn_context: TurnContext):
+        
         team_members = await TeamsInfo.get_members(turn_context)
 
         for member in team_members:
