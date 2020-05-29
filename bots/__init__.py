@@ -1,3 +1,3 @@
-from .teams_conversation_bot import TeamsConversationBot
+from .sticky_ALFAS_bot import StickyALFASBot
 
-__all__ = ["TeamsConversationBot"]
+__all__ = ["StickyALFASBot"]

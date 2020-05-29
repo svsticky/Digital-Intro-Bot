@@ -9,7 +9,7 @@ import modules.database as db
 from config import DefaultConfig
 
 
-class TeamsConversationBot(TeamsActivityHandler):
+class StickyALFASBot(TeamsActivityHandler):
     def __init__(self, app_id: str, app_password: str):
         self._app_id = app_id
         self._app_password = app_password
