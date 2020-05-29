@@ -7,6 +7,7 @@ from botbuilder.schema import CardAction, HeroCard, Mention, ConversationParamet
 from botbuilder.schema._connector_client_enums import ActionTypes
 import modules.database as db
 from config import DefaultConfig
+from google_api import GoogleSheet
 
 
 class StickyALFASBot(TeamsActivityHandler):
@@ -130,6 +131,52 @@ class StickyALFASBot(TeamsActivityHandler):
                 await turn_context.send_activity(f"Committee '{committee_name}' has been added!")
         
         await turn_context.send_activity("All committees and mentor groups have been added.")
+
+        sheet_values = GoogleSheet().get_members()
+        members = await TeamsInfo.get_members(turn_context)
+
+        for row in sheet_values[1:]:
+            matching_member = None
+
+            for member in members:
+                print(member.given_name + member.surname)
+                if member.given_name == row[0] and member.surname == row[1]:
+                    matching_member = member
+                    break
+            
+            if matching_member is None:
+                return
+            database_member = None
+
+            if row[2] == "Intro":
+                existing_user = db.getFirst(db.User, 'user_teams_id')
+                if not db.getFirst(db.IntroUser, 'user_teams_id', matching_member.id):
+                    database_member = db.IntroUser(user_teams_id=matching_member.id,
+                                                   user_name=matching_member.name)
+            elif row[2] == "Mentor":
+                if not db.getFirst(db.MentorUser, 'user_teams_id', matching_member.id):
+                    mentor_group = db.getFirst(db.MentorGroup, 'name', row[3])
+                    if mentor_group:
+                        database_member = db.MentorUser(user_teams_id=matching_member.id,
+                                                        user_name=matching_member.name,
+                                                        mg_id=mentor_group.mg_id)
+                    else:
+                        await turn_context.send_activity(f"Mentor group for '{matching_member.name} does not exist!")
+            elif row[3] == "Commissie":
+                if not db.getFirst(db.CommitteeUser, 'user_teams_id', matching_member.id):
+                    committee = db.getFirst(db.Committee, 'name', row[3])
+                    if committee:
+                        database_member = db.CommitteeUser(user_teams_id=matching_member.id,
+                                                           user_name=matching_member.name,
+                                                           committee_id=committee.committee_id)
+                    else:
+                        await turn_context.send_activity(f"Committee for '{matching_member.name}' does not exist!")
+            
+            if database_member is not None:
+                db.dbInsert(database_member)
+                await turn_context.send_activity(f"Member {matching_member.name} has been added as an {row[2]} user")
+            else:
+                await turn_context.send_activity(f"Member {matching_member.name} already existed. Left untouched")
                 
 
     async def get_intro(self, turn_context: TurnContext):
