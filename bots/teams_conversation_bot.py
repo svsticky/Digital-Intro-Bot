@@ -19,6 +19,10 @@ class TeamsConversationBot(TeamsActivityHandler):
         TurnContext.remove_recipient_mention(turn_context.activity)
         turn_context.activity.text = turn_context.activity.text.strip()
 
+        if turn_context.activity.text == "InitializeBot":
+            await self.initialize(turn_context)
+            return
+
         if turn_context.activity.text.startswith("AddCommittee"):
             await self.add_committee(turn_context)
             return
@@ -81,6 +85,53 @@ class TeamsConversationBot(TeamsActivityHandler):
         )
         return
     
+    async def initialize(self, turn_context: TurnContext):
+        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+        if not db.getFirst(db.IntroUser, 'user_teams_id', user.id):
+            await turn_context.send_activity("You are not allowed to perform this command!")
+            return
+
+        await turn_context.send_activity("Starting initialization of committees and mentor groups...")
+
+        channels = await TeamsInfo.get_team_channels(turn_context)
+
+        for channel in channels:
+            if channel.name is None:
+                continue
+
+            if channel.name.startswith("Mentorgroep"):
+                group_name = channel.name.split()[1]
+                existing_mentor_group = db.getFirst(db.MentorGroup, 'name', group_name)
+
+                if not existing_mentor_group:
+                    mentor_group = db.MentorGroup(name=group_name, channel_id=channel.id)
+                    db.dbInsert(mentor_group)
+                else:
+                    existing_mentor_group.channel_id = channel.id
+                    existing_mentor_group.name = group_name
+                    db.dbMerge(existing_mentor_group)
+                init_message = MessageFactory.text(f"This channel is now the main ALFAS channel for Mentor group '{group_name}'")
+                await self.create_channel_conversation(turn_context, channel.id, init_message)
+                await turn_context.send_activity(f"Mentor Group '{group_name}' has been added!")
+            
+            if channel.name.startswith("Commissie"):
+                committee_name = channel.name.split()[1]
+                existing_committee = db.getFirst(db.Committee, 'name', committee_name)
+
+                if not existing_committee:
+                    committee = db.Committee(name=committee_name, info="", channel_id=channel.id)
+                    db.dbInsert(committee)
+                else:
+                    existing_committee.channel_id = channel.id
+                    existing_committee.name = committee_name
+                    db.dbMerge(existing_committee)
+                init_message = MessageFactory.text(f"This channel is now the main ALFAS channel for Committee '{committee_name}'")
+                await self.create_channel_conversation(turn_context, channel.id, init_message)
+                await turn_context.send_activity(f"Committee '{committee_name}' has been added!")
+        
+        await turn_context.send_activity("All committees and mentor groups have been added.")
+                
+
     async def get_intro(self, turn_context: TurnContext):
         return_text = ''
         session = db.Session()
