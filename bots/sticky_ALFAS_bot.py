@@ -174,9 +174,12 @@ class StickyALFASBot(TeamsActivityHandler):
             
             if database_member is not None:
                 db.dbInsert(database_member)
-                await turn_context.send_activity(f"Member {matching_member.name} has been added as an {row[2]} user")
+                await turn_context.send_activity(f"Member {matching_member.name} has been added as a(n) {row[2]} user")
             else:
-                await turn_context.send_activity(f"Member {matching_member.name} already existed. Left untouched")                
+                await turn_context.send_activity(f"Member {matching_member.name} already existed. Left untouched")
+
+        await turn_context.send_activities("All members have been added to the bot with their respective rights")
+        await turn_context.send_activities("Done initializing the bot.")            
 
     async def get_intro(self, turn_context: TurnContext):
         return_text = ''
