@@ -109,4 +109,5 @@ dmypy.json
 
 .env
 data/database.sqlite
+token.pickle
 # End of https://www.gitignore.io/api/python

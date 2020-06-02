@@ -139,7 +139,6 @@ class StickyALFASBot(TeamsActivityHandler):
             matching_member = None
 
             for member in members:
-                print(member.given_name + member.surname)
                 if member.given_name == row[0] and member.surname == row[1]:
                     matching_member = member
                     break
@@ -147,14 +146,14 @@ class StickyALFASBot(TeamsActivityHandler):
             if matching_member is None:
                 return
             database_member = None
-
             if row[2] == "Intro":
-                existing_user = db.getFirst(db.User, 'user_teams_id')
-                if not db.getFirst(db.IntroUser, 'user_teams_id', matching_member.id):
+                user = db.getUserOnType('intro_user', matching_member.id)
+                if not user:
                     database_member = db.IntroUser(user_teams_id=matching_member.id,
                                                    user_name=matching_member.name)
             elif row[2] == "Mentor":
-                if not db.getFirst(db.MentorUser, 'user_teams_id', matching_member.id):
+                user = db.getUserOnType('mentor_user', matching_member.id)
+                if not user:
                     mentor_group = db.getFirst(db.MentorGroup, 'name', row[3])
                     if mentor_group:
                         database_member = db.MentorUser(user_teams_id=matching_member.id,
@@ -162,8 +161,9 @@ class StickyALFASBot(TeamsActivityHandler):
                                                         mg_id=mentor_group.mg_id)
                     else:
                         await turn_context.send_activity(f"Mentor group for '{matching_member.name} does not exist!")
-            elif row[3] == "Commissie":
-                if not db.getFirst(db.CommitteeUser, 'user_teams_id', matching_member.id):
+            elif row[2] == "Commissie":
+                user = db.getUserOnType('committee_user', matching_member.id)
+                if not user:
                     committee = db.getFirst(db.Committee, 'name', row[3])
                     if committee:
                         database_member = db.CommitteeUser(user_teams_id=matching_member.id,
@@ -176,8 +176,7 @@ class StickyALFASBot(TeamsActivityHandler):
                 db.dbInsert(database_member)
                 await turn_context.send_activity(f"Member {matching_member.name} has been added as an {row[2]} user")
             else:
-                await turn_context.send_activity(f"Member {matching_member.name} already existed. Left untouched")
-                
+                await turn_context.send_activity(f"Member {matching_member.name} already existed. Left untouched")                
 
     async def get_intro(self, turn_context: TurnContext):
         return_text = ''
@@ -296,7 +295,7 @@ class StickyALFASBot(TeamsActivityHandler):
 
         if intro_password == self.CONFIG.INTRO_PASSWORD:
             sender = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
-            existing_user = db.getFirst(db.IntroUser, 'user_teams_id', sender.id)
+            existing_user = db.getUserOnType('intro_user', sender.id)
             if not existing_user:
                 new_user = db.IntroUser(user_teams_id=sender.id, user_name=sender.name)
                 db.dbInsert(new_user)
@@ -319,7 +318,7 @@ class StickyALFASBot(TeamsActivityHandler):
         if mentor_password == self.CONFIG.MENTOR_PASSWORD:
             sender = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
             mentor_group = db.getFirst(db.MentorGroup, 'name', mentor_group_name)
-            existing_user = db.getFirst(db.MentorUser, 'user_teams_id', sender.id)
+            existing_user = db.getUserOnType('mentor_user', sender.id)
 
             if not existing_user:
                 if mentor_group:
@@ -350,7 +349,7 @@ class StickyALFASBot(TeamsActivityHandler):
         if committee_password == self.CONFIG.COMMITTEE_PASSWORD:
             sender = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
             committee = db.getFirst(db.Committee, 'name', committee_name)
-            existing_user = db.getFirst(db.CommitteeUser, 'user_teams_id', sender.id)
+            existing_user = db.getUserOnType('committee_user', sender.id)
 
             if not existing_user:
                 if committee:

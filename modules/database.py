@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 from sqlalchemy import event
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import sessionmaker, relationship, with_polymorphic
 
 database = "sqlite:///data/database.sqlite"
 
@@ -39,6 +39,11 @@ def dbMerge(db_object):
         session.commit()
         session.close()
 
+def getUserOnType(user_type, teams_id):
+    session = Session()
+    return_value = session.query(User).filter((User.user_teams_id == teams_id) & (User.user_type == user_type)).first()
+    session.close()
+    return return_value
 
 #TODO: build database tables
 
