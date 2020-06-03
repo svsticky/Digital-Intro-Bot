@@ -45,6 +45,13 @@ def getUserOnType(user_type, teams_id):
     session.close()
     return return_value
 
+def getAllUsersOnType(user_type):
+    session = Session()
+    return_value = session.query(User).filter(User.user_type == user_type).all()
+    session.close()
+    return return_value
+
+
 #TODO: build database tables
 
 class User(SQLAlchemyBase):

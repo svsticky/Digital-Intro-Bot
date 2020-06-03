@@ -17,53 +17,71 @@ class StickyALFASBot(TeamsActivityHandler):
         self.CONFIG = DefaultConfig()
 
     async def on_message_activity(self, turn_context: TurnContext):
+        """
+            All message activities towards the bot enter this function.
+            var turn_context: contains most of the message information.
+        """
         TurnContext.remove_recipient_mention(turn_context.activity)
         turn_context.activity.text = turn_context.activity.text.strip()
 
+        # Based on a given command, the bot performs a function.
+
+        # Initialize the bot
         if turn_context.activity.text == "InitializeBot":
             await self.initialize(turn_context)
             return
 
+        # Add a committee
         if turn_context.activity.text.startswith("AddCommittee"):
             await self.add_committee(turn_context)
             return
 
+        # Follow-up registering of a committee
         if turn_context.activity.text.startswith("RegCommittee"):
             await self.register_committee(turn_context)
             return
         
+        # Follow-up registering of a mentor group
         if turn_context.activity.text.startswith("RegMentorGroup"):
             await self.register_mentor_group(turn_context)
             return
         
+        # Add a mentor group
         if turn_context.activity.text.startswith("AddMentorGroup"):
             await self.add_mentor_group(turn_context)
             return
 
+        # Register a user as an intro user
         if turn_context.activity.text.startswith("RegisterIntro"):
             await self.register_intro(turn_context)
             return
         
+        # Register a user as a mentor
         if turn_context.activity.text.startswith("RegisterMentor"):
             await self.register_mentor(turn_context)
             return
 
+        # Register a user as a committee member
         if turn_context.activity.text.startswith("RegisterCommitteeMember"):
             await self.register_committee_member(turn_context)
             return
 
+        # Return all committees that are available at this moment
         if turn_context.activity.text == "AvailableCommittees":
             await self.available_committees(turn_context)
             return
 
+        # Choose a committee for a mentor group to visit.
         if turn_context.activity.text.startswith("ChooseCommittee"):
             await self.choose_committee(turn_context)
             return
 
+        # Get all intro members
         if turn_context.activity.text == "GetIntro":
             await self.get_intro(turn_context)
             return
 
+        #TODO: what to send if it is not a command?
         card = HeroCard(
             title="Welcome Card",
             text="Click the buttons to update this card",
@@ -86,21 +104,33 @@ class StickyALFASBot(TeamsActivityHandler):
         )
         return
     
+    # Function that initializes the bot
     async def initialize(self, turn_context: TurnContext):
+        # Get the user that sent the command
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
-        if not db.getFirst(db.IntroUser, 'user_teams_id', user.id):
+        user_full_name = user.given_name + " " + user.surname
+        print(user_full_name)
+        print(self.CONFIG.MAIN_ADMIN[1])
+
+        # Check if he or she has intro rights, if not abort the function
+        if not db.getUserOnType('intro_user', user.id) and user_full_name not in self.CONFIG.MAIN_ADMIN:
             await turn_context.send_activity("You are not allowed to perform this command!")
             return
 
+        # Feedback to the user
         await turn_context.send_activity("Starting initialization of committees and mentor groups...")
 
+        # Get all channels of the team
         channels = await TeamsInfo.get_team_channels(turn_context)
 
+        # For every channel we...
         for channel in channels:
             if channel.name is None:
                 continue
-
+            
+            #Check if it is a "Mentorgroep" channel
             if channel.name.startswith("Mentorgroep"):
+                # If so, add it to the database as a MentorGroup or update it.
                 group_name = channel.name.split()[1]
                 existing_mentor_group = db.getFirst(db.MentorGroup, 'name', group_name)
 
@@ -111,11 +141,14 @@ class StickyALFASBot(TeamsActivityHandler):
                     existing_mentor_group.channel_id = channel.id
                     existing_mentor_group.name = group_name
                     db.dbMerge(existing_mentor_group)
+                # Notify the channel that it are now an ALFAS channel
                 init_message = MessageFactory.text(f"This channel is now the main ALFAS channel for Mentor group '{group_name}'")
                 await self.create_channel_conversation(turn_context, channel.id, init_message)
                 await turn_context.send_activity(f"Mentor Group '{group_name}' has been added!")
             
+            #Check if it is a "Commissie" channel
             if channel.name.startswith("Commissie"):
+                #If so, add it to the database as a Commissie or update it.
                 committee_name = channel.name.split()[1]
                 existing_committee = db.getFirst(db.Committee, 'name', committee_name)
 
@@ -126,26 +159,33 @@ class StickyALFASBot(TeamsActivityHandler):
                     existing_committee.channel_id = channel.id
                     existing_committee.name = committee_name
                     db.dbMerge(existing_committee)
+                # Notify the channel that it are now an ALFAS channel
                 init_message = MessageFactory.text(f"This channel is now the main ALFAS channel for Committee '{committee_name}'")
                 await self.create_channel_conversation(turn_context, channel.id, init_message)
                 await turn_context.send_activity(f"Committee '{committee_name}' has been added!")
-        
+        # Done with the channels
         await turn_context.send_activity("All committees and mentor groups have been added.")
 
+        # Starting with adding members. Members are retrieved from a private google sheet.
         sheet_values = GoogleSheet().get_members()
+        # Get members from teams
         members = await TeamsInfo.get_members(turn_context)
-
+        
+        # Double for loop which is sad... If you can come up with something better, let me know.
+        # For all members in the sheet...
         for row in sheet_values[1:]:
             matching_member = None
 
+            # Search for a corresponding member in the team members.
             for member in members:
                 if member.given_name == row[0] and member.surname == row[1]:
                     matching_member = member
                     break
             
             if matching_member is None:
-                return
+                continue
             database_member = None
+            # Get from the database what member the member needs to become and save it as the right user.
             if row[2] == "Intro":
                 user = db.getUserOnType('intro_user', matching_member.id)
                 if not user:
@@ -172,34 +212,43 @@ class StickyALFASBot(TeamsActivityHandler):
                     else:
                         await turn_context.send_activity(f"Committee for '{matching_member.name}' does not exist!")
             
+            # Insert if a database_member is created (this is not the case if the user already exists in the database).
             if database_member is not None:
                 db.dbInsert(database_member)
                 await turn_context.send_activity(f"Member {matching_member.name} has been added as a(n) {row[2]} user")
             else:
                 await turn_context.send_activity(f"Member {matching_member.name} already existed. Left untouched")
 
-        await turn_context.send_activities("All members have been added to the bot with their respective rights")
-        await turn_context.send_activities("Done initializing the bot.")            
+        #Feedback to user.
+        await turn_context.send_activity("All members have been added to the bot with their respective rights")
+        await turn_context.send_activity("Done initializing the bot.")   
 
+    # Obtains all intro members
     async def get_intro(self, turn_context: TurnContext):
         return_text = ''
         session = db.Session()
+        users = db.getAllUsersOnType('intro_user')
+        session.close()
 
-        for user in session.query(db.IntroUser).all():
-            return_text = f'{user.user_name}   \n'
+        for user in users:
+            return_text += f'{user.user_name}   \n'
         
         await turn_context.send_activity(return_text)
 
+    #Function to start adding a seperate committee. Expects argument: committee_name
     async def add_committee(self, turn_context: TurnContext):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
 
-        if(db.getFirst(db.IntroUser, 'user_teams_id', user.id)):
+        #Command can only be done by an intro_user
+        if db.getUserOnType('intro_user', user.id):
             try:
                 committee_name = turn_context.activity.text.split()[1]
             except IndexError:
                 await turn_context.send_activity("You need to specify the name for the committee")
                 return
             channels = await TeamsInfo.get_team_channels(turn_context)
+            # A card is returned to the user that contains all channels as buttons.
+            # A click on the button will send a new command to the bot.
             card = CardFactory.hero_card(
                 HeroCard(
                     title="Choose corresponding Committee channel",
@@ -217,19 +266,25 @@ class StickyALFASBot(TeamsActivityHandler):
         else:
             await turn_context.send_activity("You are not allowed to perform this task! You need to be an Intro Member.")
 
+    # Reacts on the click of the button of the previous function. Saves the committee and links the channel.
     async def register_committee(self, turn_context: TurnContext):
+        # Again, check if the user is an intro user.
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
-        if not db.getFirst(db.IntroUser, 'user_teams_id', user.id):
+        if not db.getUserOnType('intro_user', user.id):
             await turn_context.send_activity("You do not have the rights to perform this action")
+            return
 
+        # Get the extra info around the command. This includes the channel id and the committee name.
         command_info = turn_context.activity.text.split()
 
+        # Check if the information is there.
         try:
             committee_name = command_info[2]
             channel_id = command_info[1]
         except IndexError:
             await turn_context.send_activity("Something went wrong internally in the bot. Please contact an Intro Member")
         
+        #Save or update the new committee
         existing_committee = db.getFirst(db.Committee, 'name', committee_name)        
         if existing_committee:
             existing_committee.channel_id = channel_id
@@ -240,16 +295,19 @@ class StickyALFASBot(TeamsActivityHandler):
 
         await turn_context.send_activity(f"Committee '{committee_name}' was successfully added!")
 
+    # Function that starts adding a separate mentor group.
     async def add_mentor_group(self, turn_context: TurnContext):
+        # Check if the user if a intro user.
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
 
-        if(db.getFirst(db.IntroUser, 'user_teams_id', user.id)):
+        if db.getUserOnType('intro_user', user.id):
             try:
                 mentor_group_name = turn_context.activity.text.split()[1]
             except IndexError:
                 await turn_context.send_activity("You need to specify the name for the mentorgroup")
                 return
             channels = await TeamsInfo.get_team_channels(turn_context)
+            # Again send a card with all channels to choose the corresponding one.
             card = CardFactory.hero_card(
                 HeroCard(
                     title="Choose corresponding Mentor Group channel",
@@ -267,10 +325,12 @@ class StickyALFASBot(TeamsActivityHandler):
         else:
             await turn_context.send_activity("You are not allowed to perform this task! You need to be an Intro Member.")
 
+    # This function handles the choice of a channel for a mentor group.
     async def register_mentor_group(self, turn_context: TurnContext):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
-        if not db.getFirst(db.IntroUser, 'user_teams_id', user.id):
+        if not db.getUserOnType('intro_user', user.id):
             await turn_context.send_activity("You do not have the rights to perform this action")
+            return
             
         command_info = turn_context.activity.text.split()
 

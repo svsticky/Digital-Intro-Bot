@@ -19,3 +19,5 @@ class DefaultConfig:
 
     SPREADSHEET_ID = os.getenv("SpreadSheetId")
     SPREADSHEET_RANGE = os.getenv("SpreadSheetRange")
+
+    MAIN_ADMIN = ["Niels Kwadijk", "Joris de Jong"]
