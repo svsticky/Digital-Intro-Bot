@@ -23,6 +23,8 @@ class StickyALFASBot(TeamsActivityHandler):
         """
         TurnContext.remove_recipient_mention(turn_context.activity)
         turn_context.activity.text = turn_context.activity.text.strip()
+        print(self.CONFIG.APP_ID)
+        print(self.CONFIG.APP_PASSWORD)
 
         # Based on a given command, the bot performs a function.
 
@@ -75,6 +77,10 @@ class StickyALFASBot(TeamsActivityHandler):
         if turn_context.activity.text.startswith("ChooseCommittee"):
             await self.choose_committee(turn_context)
             return
+        
+        if turn_context.activity.text == "Release":
+            await self.release_committee(turn_context)
+            return
 
         # Get all intro members
         if turn_context.activity.text == "GetIntro":
@@ -82,26 +88,7 @@ class StickyALFASBot(TeamsActivityHandler):
             return
 
         #TODO: what to send if it is not a command?
-        card = HeroCard(
-            title="Welcome Card",
-            text="Click the buttons to update this card",
-            buttons=[
-                CardAction(
-                    type=ActionTypes.message_back,
-                    title="Update Card",
-                    text="UpdateCardAction",
-                    value={"count": 0},
-                ),
-                CardAction(
-                    type=ActionTypes.message_back,
-                    title="Message all memebers",
-                    text="MessageAllMembers",
-                ),
-            ],
-        )
-        await turn_context.send_activity(
-            MessageFactory.attachment(CardFactory.hero_card(card))
-        )
+        await turn_context.send_activity("You provided a non valid command, maybe you made a typo?")
         return
     
     # Function that initializes the bot
@@ -109,8 +96,6 @@ class StickyALFASBot(TeamsActivityHandler):
         # Get the user that sent the command
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         user_full_name = user.given_name + " " + user.surname
-        print(user_full_name)
-        print(self.CONFIG.MAIN_ADMIN[1])
 
         # Check if he or she has intro rights, if not abort the function
         if not db.getUserOnType('intro_user', user.id) and user_full_name not in self.CONFIG.MAIN_ADMIN:
@@ -141,7 +126,7 @@ class StickyALFASBot(TeamsActivityHandler):
                     existing_mentor_group.channel_id = channel.id
                     existing_mentor_group.name = group_name
                     db.dbMerge(existing_mentor_group)
-                # Notify the channel that it are now an ALFAS channel
+                # Notify the channel that it is now an ALFAS channel
                 init_message = MessageFactory.text(f"This channel is now the main ALFAS channel for Mentor group '{group_name}'")
                 await self.create_channel_conversation(turn_context, channel.id, init_message)
                 await turn_context.send_activity(f"Mentor Group '{group_name}' has been added!")
@@ -159,7 +144,7 @@ class StickyALFASBot(TeamsActivityHandler):
                     existing_committee.channel_id = channel.id
                     existing_committee.name = committee_name
                     db.dbMerge(existing_committee)
-                # Notify the channel that it are now an ALFAS channel
+                # Notify the channel that it is now an ALFAS channel
                 init_message = MessageFactory.text(f"This channel is now the main ALFAS channel for Committee '{committee_name}'")
                 await self.create_channel_conversation(turn_context, channel.id, init_message)
                 await turn_context.send_activity(f"Committee '{committee_name}' has been added!")
@@ -431,6 +416,17 @@ class StickyALFASBot(TeamsActivityHandler):
             await turn_context.send_activity('Wrong password!')
         
     async def available_committees(self, turn_context: TurnContext):
+        channel_id = turn_context.activity.channel_id
+        if not db.getFirst(db.MentorGroup, 'channel_id', channel_id):
+            await turn_context.send_activity("You can only perform this command from a Mentorgroep channel")
+            return
+
+        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+        mentor_db_user = db.getUserOnType('mentor_user', user.id)
+        if not mentor_db_user:
+            await turn_context.send_activity("Only a mentor can perform this action")
+            return
+
         committees = db.getAll(db.Committee, 'occupied', False)
 
         card = CardFactory.hero_card(
@@ -452,7 +448,7 @@ class StickyALFASBot(TeamsActivityHandler):
     
     async def choose_committee(self, turn_context: TurnContext):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
-        db_user = db.getFirst(db.MentorUser, 'user_teams_id', user.id)
+        db_user = db.getUserOnType('mentor_user', user.id)
         
         if db_user:
             try:
@@ -473,10 +469,21 @@ class StickyALFASBot(TeamsActivityHandler):
                 await self.create_channel_conversation(turn_context, committee.channel_id, committee_message)
             else:
                 await turn_context.send_activity("This committee is now occupied, please choose another committee to visit.")
-
         else:
             await turn_context.send_activity(f"You are not a Mentor and thus not allowed to perform this command.")
 
+    async def release_committee(self, turn_context: TurnContext):
+        user = TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+        db_user = db.getUserOnType('committee_user', user.id)
+        
+        if db_user:
+            committee = db.getFirst(db.Committee, 'committee_id', db_user.committee_id)
+            committee.occupied = False
+            db.dbMerge(committee)
+            release_message = MessageFactory.text("This committee has now been freed from occupation. Expect a new request soon!")
+            await self.create_channel_conversation(turn_context, committee.channel_id, release_message)
+        else:
+            await turn_context.send_activity("You are not allowed to perform this command.")
 
     async def return_members(self, turn_context: TurnContext):
         members = await TeamsInfo.get_team_members(turn_context)
