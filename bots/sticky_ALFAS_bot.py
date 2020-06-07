@@ -76,6 +76,11 @@ class StickyALFASBot(TeamsActivityHandler):
             await self.choose_committee(turn_context)
             return
         
+        # When someone enrolls for a certain committee
+        if turn_context.activity.text.startswith("Enroll"):
+            await self.enroll(turn_context)
+            return
+        
         if turn_context.activity.text == "Release":
             await self.release_committee(turn_context)
             return
@@ -501,6 +506,29 @@ class StickyALFASBot(TeamsActivityHandler):
             await turn_context.send_activity(f"You are not a Mentor and thus not allowed to perform this command.")
         session.close()
 
+    async def enroll(self, turn_context: TurnContext):
+        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+
+        try:
+            committee_id = turn_context.activity.text.split()[1]
+        except IndexError:
+            await turn_context.send_activity("Something went wrong when clicking the button, please contact an intro member")
+            return
+        
+        session = db.Session()
+        ex_enrollment = db.getEnrollment(session, committee_id, user.email)
+        committee = db.getFirst(session, db.Committee, 'committee_id', committee_id)
+        print(ex_enrollment)
+
+        if not ex_enrollment:
+            enrollment = db.Enrollment(committee_id=committee_id, first_name=user.given_name,
+                                       last_name=user.surname, email_address=user.email)
+            db.dbInsert(session, enrollment)
+            await self.create_personal_conversation(turn_context, user, f"You have been added to the interest list of '{committee.name}'")
+        session.close()
+
+
+
     async def release_committee(self, turn_context: TurnContext):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         session = db.Session()
@@ -516,6 +544,7 @@ class StickyALFASBot(TeamsActivityHandler):
             await turn_context.send_activity("You are not allowed to perform this command.")
         session.close()
 
+    #Example functions!
     async def return_members(self, turn_context: TurnContext):
         members = await TeamsInfo.get_team_members(turn_context)
         return_text = ''
@@ -607,6 +636,7 @@ class StickyALFASBot(TeamsActivityHandler):
     async def _delete_card_activity(self, turn_context: TurnContext):
         await turn_context.delete_activity(turn_context.activity.reply_to_id)
 
+    # Helper functions
     async def create_channel_conversation(self, turn_context: TurnContext, teams_channel_id: str, message):
         params = ConversationParameters(
             is_group=True,
@@ -615,6 +645,30 @@ class StickyALFASBot(TeamsActivityHandler):
         )
         connector_client = await turn_context.adapter.create_connector_client(turn_context.activity.service_url)
         await connector_client.conversations.create_conversation(params)
+    
+    async def create_personal_conversation(self, turn_context: TurnContext, user, message):
+        conversation_reference = TurnContext.get_conversation_reference(turn_context.activity)
+        params = ConversationParameters(
+            is_group=False,
+            bot=turn_context.activity.recipient,
+            members=[user],
+            tenant_id=turn_context.activity.conversation.tenant_id,
+        )
+
+        async def get_ref(tc1):
+            conversation_reference_inner = TurnContext.get_conversation_reference(
+                tc1.activity
+            )
+            return await tc1.adapter.continue_conversation(
+                conversation_reference_inner, send_message, self._app_id
+            )
+
+        async def send_message(tc2: TurnContext):
+            return await tc2.send_activity(
+                message
+            )  # pylint: disable=cell-var-from-loop
+
+        await turn_context.adapter.create_conversation(conversation_reference, get_ref, params)
 
     async def create_enrollment_button(self, committee):
         card = CardFactory.hero_card(

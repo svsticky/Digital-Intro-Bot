@@ -10,6 +10,8 @@ engine = sa.create_engine(database, echo=False)
 Session = sessionmaker(bind=engine)
 
 #TODO: build database management functions to be called from elsewhere
+# To be able to use these functions, you need to create a new session.
+# When done, close the session!
 
 def getFirst(session, table, column, value):
     return_value = session.query(table).filter_by(**{column: value}).first()
@@ -39,6 +41,9 @@ def getUserOnType(session, user_type, teams_id):
 def getAllUsersOnType(session, user_type):
     return_value = session.query(User).filter(User.user_type == user_type).all()
     return return_value
+
+def getEnrollment(session, committee_id, email):
+    return session.query(Enrollment).filter((Enrollment.committee_id == committee_id) & (Enrollment.email_address == email)).first()
 
 
 #TODO: build database tables
