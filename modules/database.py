@@ -11,44 +11,33 @@ Session = sessionmaker(bind=engine)
 
 #TODO: build database management functions to be called from elsewhere
 
-def getFirst(table, column, value):
-    session = Session()
+def getFirst(session, table, column, value):
     return_value = session.query(table).filter_by(**{column: value}).first()
-    session.close()
     return return_value
 
-def getAll(table, column, value):
-    session = Session()
+def getAll(session, table, column, value):
     return_value = session.query(table).filter_by(**{column: value}).all()
-    session.close()
     return return_value
 
-def dbInsert(db_object):
+def dbInsert(session, db_object):
     """Inserts object"""
     if(db_object):
-        session = Session()
         session.add(db_object)
         session.commit()
-        session.close()
 
-def dbMerge(db_object):
+def dbMerge(session, db_object):
     """Updates object"""
     if(db_object):
-        session = Session()
         session.merge(db_object)
         session.commit()
-        session.close()
 
-def getUserOnType(user_type, teams_id):
-    session = Session()
+def getUserOnType(session, user_type, teams_id):
     return_value = session.query(User).filter((User.user_teams_id == teams_id) & (User.user_type == user_type)).first()
-    session.close()
+
     return return_value
 
-def getAllUsersOnType(user_type):
-    session = Session()
+def getAllUsersOnType(session, user_type):
     return_value = session.query(User).filter(User.user_type == user_type).all()
-    session.close()
     return return_value
 
 
@@ -101,7 +90,7 @@ class Committee(SQLAlchemyBase):
     committee_id = sa.Column(sa.Integer, primary_key=True)
     name = sa.Column(sa.String(50), unique=True)
     info = sa.Column(sa.String(50))
-    channel_id = sa.Column(sa.String(50))
+    channel_id = sa.Column(sa.String(50), index=True)
     members = relationship("CommitteeUser")
     occupied = sa.Column(sa.Boolean, default=False)
 
@@ -110,7 +99,7 @@ class MentorGroup(SQLAlchemyBase):
     __tablename__ = 'mentor_group'
     mg_id = sa.Column(sa.Integer, primary_key=True)
     name = sa.Column(sa.String(50), unique=True)
-    channel_id = sa.Column(sa.String(50))
+    channel_id = sa.Column(sa.String(50), index=True)
     parents = relationship("MentorUser")
     occupied = sa.Column(sa.Boolean, default=False)
 
@@ -120,6 +109,15 @@ class Visit(SQLAlchemyBase):
     visit_id = sa.Column(sa.Integer, primary_key=True)
     mg_id = sa.Column(sa.String(50), index=True)
     committee_id = sa.Column(sa.String(50))
+
+class Enrollment(SQLAlchemyBase):
+    __tablename__ = 'enrollment'
+    enroll_id = sa.Column(sa.Integer, primary_key=True)
+    committee_id = sa.Column(sa.Integer, sa.ForeignKey('committee.committee_id'))
+    first_name = sa.Column(sa.String(50))
+    last_name = sa.Column(sa.String(50))
+    email_address = sa.Column(sa.String(50))
+    __table_args__ = (sa.UniqueConstraint('committee_id', 'email_address', name='_id_email_uc'),)
 
 
 @event.listens_for(User, 'mapper_configured')
