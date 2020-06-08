@@ -23,7 +23,8 @@ class DefaultConfig:
     INTRO_PASSWORD = os.getenv("IntroPassword")
     COMMITTEE_PASSWORD = os.getenv("CommitteePassword")
 
-    SPREADSHEET_ID = os.getenv("SpreadSheetId")
-    SPREADSHEET_RANGE = os.getenv("SpreadSheetRange")
+    ALFAS_INFOSHEET_ID = os.getenv("ALFASInfoSheetId")
+    ALFAS_MEMBERS_RANGE = os.getenv("ALFASMemberRange")
+    ALFAS_TIMESLOTS_RANGE = os.getenv("ALFASTimeslotsRange")
 
     MAIN_ADMIN = ["Niels Kwadijk", "Joris de Jong"]

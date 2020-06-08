@@ -35,7 +35,14 @@ class GoogleSheet:
 
     def get_members(self):
         sheet = self.service.spreadsheets()
-        result = sheet.values().get(spreadsheetId=self.config.SPREADSHEET_ID,
-                                    range=self.config.SPREADSHEET_RANGE).execute()
+        result = sheet.values().get(spreadsheetId=self.config.ALFAS_INFOSHEET_ID,
+                                    range=self.config.ALFAS_MEMBERS_RANGE).execute()
+        values = result.get('values', [])
+        return values
+    
+    def get_timeslots(self):
+        sheet = self.service.spreadsheets()
+        result = sheet.values().get(spreadsheetId=self.config.ALFAS_INFOSHEET_ID,
+                                    range=self.config.ALFAS_TIMESLOTS_RANGE).execute()
         values = result.get('values', [])
         return values

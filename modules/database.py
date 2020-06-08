@@ -103,10 +103,11 @@ class Committee(SQLAlchemyBase):
 class MentorGroup(SQLAlchemyBase):
     __tablename__ = 'mentor_group'
     mg_id = sa.Column(sa.Integer, primary_key=True)
-    name = sa.Column(sa.String(50), unique=True)
+    name = sa.Column(sa.String(50), unique=True, index=True)
     channel_id = sa.Column(sa.String(50), index=True)
     parents = relationship("MentorUser")
     occupied = sa.Column(sa.Boolean, default=False)
+    timeslot = sa.Column(sa.String(50))
 
 
 class Visit(SQLAlchemyBase):
