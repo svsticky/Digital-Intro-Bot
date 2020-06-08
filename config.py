@@ -10,8 +10,14 @@ class DefaultConfig:
     """ Bot Configuration """
 
     PORT = 3978
-    APP_ID = os.getenv("MicrosoftAppId")
-    APP_PASSWORD = os.getenv("MicrosoftAppPassword")
+    ALFAS_APP_ID = os.getenv("ALFASAppId")
+    ALFAS_APP_PASSWORD = os.getenv("ALFASAppPassword")
+
+    C88_APP_ID = os.getenv("C88AppId")
+    C88_APP_PASSWORD = os.getenv("C88AppPassword")
+
+    UITHOF_APP_ID = os.getenv("UithofAppId")
+    UITHOF_APP_PASSWORD = os.getenv("UithofAppPassword")
     
     MENTOR_PASSWORD = os.getenv("MentorPassword")
     INTRO_PASSWORD = os.getenv("IntroPassword")

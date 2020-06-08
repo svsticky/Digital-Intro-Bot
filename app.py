@@ -14,15 +14,21 @@ from botbuilder.core import (
 from botbuilder.core.integration import aiohttp_error_middleware
 from botbuilder.schema import Activity, ActivityTypes
 
-from bots import StickyALFASBot
+from bots import StickyALFASBot, StickyC88Bot, StickyUITHOFBot
 from config import DefaultConfig
 
 CONFIG = DefaultConfig()
 
 # Create adapter.
 # See https://aka.ms/about-bot-adapter to learn more about how bots work.
-SETTINGS = BotFrameworkAdapterSettings(CONFIG.APP_ID, CONFIG.APP_PASSWORD)
-ADAPTER = BotFrameworkAdapter(SETTINGS)
+ALFAS_SETTINGS = BotFrameworkAdapterSettings(CONFIG.ALFAS_APP_ID, CONFIG.ALFAS_APP_PASSWORD)
+ALFAS_ADAPTER = BotFrameworkAdapter(ALFAS_SETTINGS)
+
+C88_SETTINGS = BotFrameworkAdapterSettings(CONFIG.C88_APP_ID, CONFIG.C88_APP_PASSWORD)
+C88_ADAPTER = BotFrameworkAdapter(C88_SETTINGS)
+
+UITHOF_SETTINGS = BotFrameworkAdapterSettings(CONFIG.UITHOF_APP_ID, CONFIG.UITHOF_APP_PASSWORD)
+UITHOF_ADAPTER = BotFrameworkAdapter(UITHOF_SETTINGS)
 
 
 # Catch-all for errors.
@@ -53,19 +59,26 @@ async def on_error(context: TurnContext, error: Exception):
         await context.send_activity(trace_activity)
 
 
-ADAPTER.on_turn_error = on_error
+ALFAS_ADAPTER.on_turn_error = on_error
+C88_ADAPTER.on_turn_error = on_error
+UITHOF_ADAPTER.on_turn_error = on_error
 
 # If the channel is the Emulator, and authentication is not in use, the AppId will be null.
 # We generate a random AppId for this case only. This is not required for production, since
 # the AppId will have a value.
-APP_ID = SETTINGS.app_id if SETTINGS.app_id else uuid.uuid4()
+ALFAS_APP_ID = ALFAS_SETTINGS.app_id if ALFAS_SETTINGS.app_id else uuid.uuid4()
+C88_APP_ID = C88_SETTINGS.app_id if C88_SETTINGS.app_id else uuid.uuid4()
+UITHOF_APP_ID = UITHOF_SETTINGS.app_id if UITHOF_SETTINGS.app_id else uuid.uuid4()
 
 # Create the Bot
-BOT = StickyALFASBot(CONFIG.APP_ID, CONFIG.APP_PASSWORD)
+
+ALFAS_BOT = StickyALFASBot(CONFIG.ALFAS_APP_ID, CONFIG.ALFAS_APP_PASSWORD)
+C88_BOT = StickyC88Bot(CONFIG.C88_APP_ID, CONFIG.C88_APP_PASSWORD)
+UITHOF_BOT = StickyUITHOFBot(CONFIG.UITHOF_APP_ID, CONFIG.UITHOF_APP_PASSWORD)
 
 
 # Listen for incoming requests on /api/messages.
-async def messages(req: Request) -> Response:
+async def alfas_messages(req: Request) -> Response:
     # Main bot message handler.
     if "application/json" in req.headers["Content-Type"]:
         body = await req.json()
@@ -75,14 +88,47 @@ async def messages(req: Request) -> Response:
     activity = Activity().deserialize(body)
     auth_header = req.headers["Authorization"] if "Authorization" in req.headers else ""
 
-    response = await ADAPTER.process_activity(activity, auth_header, BOT.on_turn)
+    response = await ALFAS_ADAPTER.process_activity(activity, auth_header, ALFAS_BOT.on_turn)
+    if response:
+        return json_response(data=response.body, status=response.status)
+    return Response(status=HTTPStatus.OK)
+
+async def c88_messages(req: Request) -> Response:
+    # Main bot message handler.
+    if "application/json" in req.headers["Content-Type"]:
+        body = await req.json()
+    else:
+        return Response(status=HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
+
+    activity = Activity().deserialize(body)
+    auth_header = req.headers["Authorization"] if "Authorization" in req.headers else ""
+
+    response = await C88_ADAPTER.process_activity(activity, auth_header, C88_BOT.on_turn)
+    if response:
+        return json_response(data=response.body, status=response.status)
+    return Response(status=HTTPStatus.OK)
+
+async def uithof_messages(req: Request) -> Response:
+    # Main bot message handler.
+    if "application/json" in req.headers["Content-Type"]:
+        body = await req.json()
+    else:
+        return Response(status=HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
+
+    activity = Activity().deserialize(body)
+    auth_header = req.headers["Authorization"] if "Authorization" in req.headers else ""
+
+    response = await UITHOF_ADAPTER.process_activity(activity, auth_header, UITHOF_BOT.on_turn)
     if response:
         return json_response(data=response.body, status=response.status)
     return Response(status=HTTPStatus.OK)
 
 
 APP = web.Application(middlewares=[aiohttp_error_middleware])
-APP.router.add_post("/api/messages", messages)
+APP.router.add_post("/api/alfas/messages", alfas_messages)
+APP.router.add_post("/api/c88/messages", c88_messages)
+APP.router.add_post("/api/uithof/messages", uithof_messages)
+
 
 if __name__ == "__main__":
     try:
