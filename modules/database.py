@@ -63,7 +63,7 @@ class User(SQLAlchemyBase):
 
 class CommitteeUser(User):
     __tablename__ = 'committee_user'
-    user_id = sa.Column(sa.Integer, sa.ForeignKey('user.user_id'), primary_key=True)
+    user_id = sa.Column(sa.Integer, sa.ForeignKey('user.user_id'), primary_key=True, unique=True)
     committee_id = sa.Column(sa.Integer, sa.ForeignKey('committee.committee_id'))
 
     __mapper_args__ = {
@@ -73,7 +73,7 @@ class CommitteeUser(User):
 
 class MentorUser(User):
     __tablename__ = 'mentor_user'
-    user_id = sa.Column(sa.Integer, sa.ForeignKey('user.user_id'), primary_key=True)
+    user_id = sa.Column(sa.Integer, sa.ForeignKey('user.user_id'), primary_key=True, unique=True)
     mg_id = sa.Column(sa.Integer, sa.ForeignKey('mentor_group.mg_id'))
 
     __mapper_args__ = {
@@ -83,7 +83,7 @@ class MentorUser(User):
 
 class IntroUser(User):
     __tablename__ = 'intro_user'
-    user_id = sa.Column(sa.Integer, sa.ForeignKey('user.user_id'), primary_key=True)
+    user_id = sa.Column(sa.Integer, sa.ForeignKey('user.user_id'), primary_key=True, unique=True)
 
     __mapper_args__ = {
         'polymorphic_identity':'intro_user',

@@ -653,13 +653,9 @@ class StickyALFASBot(TeamsActivityHandler):
         # Double for loop which is sad... If you can come up with something better, let me know.
         # For all members in the sheet...
         for row in sheet_values[1:]:
-            matching_member = None
-
-            # Search for a corresponding member in the team members.
-            for member in members:
-                if member.given_name == row[0] and member.surname == row[1]:
-                    matching_member = member
-                    break
+            #get corresponding member
+            matching_member = next(filter(lambda member: member.given_name == row[0] and
+                                     member.surname == row[1], members), None)
 
             if matching_member is None:
                 continue
