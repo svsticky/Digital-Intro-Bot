@@ -8,6 +8,7 @@ from botbuilder.schema._connector_client_enums import ActionTypes
 import modules.database as db
 from config import DefaultConfig
 from google_api import GoogleSheet
+from scheduler import main_scheduler
 
 
 class StickyALFASBot(TeamsActivityHandler):
@@ -702,5 +703,18 @@ class StickyALFASBot(TeamsActivityHandler):
             mentor_group = db.getFirst(session, db.MentorGroup, 'name', row[0])
             mentor_group.timeslot = row[1]
             db.dbMerge(session, mentor_group)
+            one_hour, one_minutes = self.decrease_time(row[1], 1)
+            time_minus_five = self.decrease_time(row[1], 5)
+            main_scheduler.add_notifier(self.send_reminder, mentor_group.channel_id, turn_context, one_hour, one_minutes, minutes)
+            
 
         await turn_context.send_activity("All timeslots have been obtained.")
+    
+    async def send_reminder(self, turn_context: TurnContext, minutes, channel_id):
+        message = MessageFactory.text("Reminder! You are expected visit the registration booth for the" \
+                                     f"associations in {minutes} minutes.")
+        await self.create_channel_conversation(turn_context, channel_id, message)
+
+    def decrease_time(self, time: str, amount: int):
+        time_to_int = int(time.replace(':', '')) - amount
+        return str(time_to_int)[:2], str(time_to_int)[2:]

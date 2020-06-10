@@ -2,3 +2,4 @@ requests
 botbuilder-integration-aiohttp>=4.9.0
 python-dotenv>=0.13.0
 sqlalchemy>=1.2.17
+apscheduler>=3.6.3
