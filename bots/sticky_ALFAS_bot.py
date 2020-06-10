@@ -654,32 +654,31 @@ class StickyALFASBot(TeamsActivityHandler):
         # For all members in the sheet...
         for row in sheet_values[1:]:
             #get corresponding member
-            matching_member = next(filter(lambda member: member.given_name == row[0] and
-                                     member.surname == row[1], members), None)
+            matching_member = next(filter(lambda member: member.email == row[2], members), None)
 
             if matching_member is None:
                 continue
             database_member = None
             # Get from the database what member the member needs to become and save it as the right user.
-            if row[2] == "Intro":
+            if row[3] == "Intro":
                 user = db.getUserOnType(session, 'intro_user', matching_member.id)
                 if not user:
                     database_member = db.IntroUser(user_teams_id=matching_member.id,
                                                    user_name=matching_member.name)
-            elif row[2] == "Mentor":
+            elif row[3] == "Mentor":
                 user = db.getUserOnType(session, 'mentor_user', matching_member.id)
                 if not user:
-                    mentor_group = db.getFirst(session, db.MentorGroup, 'name', row[3])
+                    mentor_group = db.getFirst(session, db.MentorGroup, 'name', row[4])
                     if mentor_group:
                         database_member = db.MentorUser(user_teams_id=matching_member.id,
                                                         user_name=matching_member.name,
                                                         mg_id=mentor_group.mg_id)
                     else:
                         await turn_context.send_activity(f"Mentor group for '{matching_member.name} does not exist!")
-            elif row[2] == "Commissie":
+            elif row[3] == "Commissie":
                 user = db.getUserOnType(session, 'committee_user', matching_member.id)
                 if not user:
-                    committee = db.getFirst(session, db.Committee, 'name', row[3])
+                    committee = db.getFirst(session, db.Committee, 'name', row[4])
                     if committee:
                         database_member = db.CommitteeUser(user_teams_id=matching_member.id,
                                                            user_name=matching_member.name,
