@@ -8,7 +8,8 @@ from botbuilder.schema._connector_client_enums import ActionTypes
 import modules.database as db
 from config import DefaultConfig
 from google_api import GoogleSheet
-from scheduler import main_scheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import datetime
 
 
 class StickyALFASBot(TeamsActivityHandler):
@@ -16,6 +17,7 @@ class StickyALFASBot(TeamsActivityHandler):
         self._app_id = app_id
         self._app_password = app_password
         self.CONFIG = DefaultConfig()
+        self.scheduler = AsyncIOScheduler(timezone="Europe/Amsterdam")
 
     async def on_message_activity(self, turn_context: TurnContext):
         """
@@ -690,9 +692,6 @@ class StickyALFASBot(TeamsActivityHandler):
             # Insert if a database_member is created (this is not the case if the user already exists in the database).
             if database_member is not None:
                 db.dbInsert(session, database_member)
-                await turn_context.send_activity(f"Member {matching_member.name} has been added as a(n) {row[2]} user")
-            else:
-                await turn_context.send_activity(f"Member {matching_member.name} already existed. Left untouched")
 
     async def init_timeslots(self, turn_context: TurnContext, session):
         # Obtain timeslots sheet
@@ -703,18 +702,24 @@ class StickyALFASBot(TeamsActivityHandler):
             mentor_group = db.getFirst(session, db.MentorGroup, 'name', row[0])
             mentor_group.timeslot = row[1]
             db.dbMerge(session, mentor_group)
-            one_hour, one_minutes = self.decrease_time(row[1], 1)
-            time_minus_five = self.decrease_time(row[1], 5)
-            main_scheduler.add_notifier(self.send_reminder, mentor_group.channel_id, turn_context, one_hour, one_minutes, minutes)
-            
 
+            time= self.string_to_datetime(row[1])
+            time_5 = time - datetime.timedelta(minutes=5)
+            time_1 = time - datetime.timedelta(minutes = 1)
+            self.scheduler.add_job(self.send_reminder, args=[turn_context, 1, mentor_group.channel_id],
+                                   trigger='cron', hour=time_1.hour, minute=time_1.minute)
+            self.scheduler.add_job(self.send_reminder, args=[turn_context, 5, mentor_group.channel_id],
+                                   trigger='cron', hour=time_5.hour, minute=time_5.minute)
+            
+        self.scheduler.start()
         await turn_context.send_activity("All timeslots have been obtained.")
     
     async def send_reminder(self, turn_context: TurnContext, minutes, channel_id):
-        message = MessageFactory.text("Reminder! You are expected visit the registration booth for the" \
+        message = MessageFactory.text("Reminder! You are expected visit the registration booth for the " \
                                      f"associations in {minutes} minutes.")
         await self.create_channel_conversation(turn_context, channel_id, message)
 
-    def decrease_time(self, time: str, amount: int):
-        time_to_int = int(time.replace(':', '')) - amount
-        return str(time_to_int)[:2], str(time_to_int)[2:]
+    def string_to_datetime(self, time: str):
+        hour, minute = int(time[:2]), int(time[3:])
+        time = datetime.datetime(2020, 1, 1, hour, minute, 0)
+        return time
