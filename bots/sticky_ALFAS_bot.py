@@ -703,15 +703,14 @@ class StickyALFASBot(TeamsActivityHandler):
             mentor_group.sticky_timeslot = row[1]
             mentor_group.aes_timeslot = row[2]
             db.dbMerge(session, mentor_group)
-            self.create_job(turn_context, mentor_group.channel_id, row[1])
-            self.create_job(turn_context, mentor_group.channel_id, row[2])            
+            self.create_job(turn_context, mentor_group.channel_id, row[1], "Sticky")
+            self.create_job(turn_context, mentor_group.channel_id, row[2], "Aeskwadraat")          
             
         self.scheduler.start()
         await turn_context.send_activity("All timeslots have been obtained.")
     
-    async def send_reminder(self, turn_context: TurnContext, minutes, channel_id):
-        message = MessageFactory.text("Reminder! You are expected visit the registration booth for the " \
-                                     f"associations in {minutes} minutes.")
+    async def send_reminder(self, turn_context: TurnContext, minutes, channel_id, association):
+        message = MessageFactory.text(f"Reminder! You are expected visit the registration booth of {association} in {minutes} minutes.")
         await self.create_channel_conversation(turn_context, channel_id, message)
 
     def string_to_datetime(self, time: str):
@@ -719,11 +718,11 @@ class StickyALFASBot(TeamsActivityHandler):
         time = datetime.datetime(2020, 1, 1, hour, minute, 0)
         return time
     
-    def create_job(self, turn_context: TurnContext, channel_id, string_time: str):
+    def create_job(self, turn_context: TurnContext, channel_id, string_time: str, association):
         time= self.string_to_datetime(string_time)
         time_5 = time - datetime.timedelta(minutes=5)
         time_1 = time - datetime.timedelta(minutes=1)
-        self.scheduler.add_job(self.send_reminder, args=[turn_context, 1, channel_id],
+        self.scheduler.add_job(self.send_reminder, args=[turn_context, 1, channel_id, association],
                                 trigger='cron', hour=time_1.hour, minute=time_1.minute)
-        self.scheduler.add_job(self.send_reminder, args=[turn_context, 5, channel_id],
+        self.scheduler.add_job(self.send_reminder, args=[turn_context, 5, channel_id, association],
                                 trigger='cron', hour=time_5.hour, minute=time_5.minute)
