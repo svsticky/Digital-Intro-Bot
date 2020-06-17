@@ -25,11 +25,56 @@ class StickyC88Bot(TeamsActivityHandler):
         # Based on a given command, the bot performs a function.
 
         # Send a certain set of activities to the given group
-        if turn_context.activity.text.startswith("UnlockSet"):
-            pass
+        if turn_context.activity.text.startswith("SendQuestions"):
+            await self.send_questions(turn_context)
+            return
 
         if turn_context.activity.text.startswith("Answer"):
             pass
 
         if turn_context.activity.text.startswith("GetQuestions"):
             pass
+
+    async def send_questions(self, turn_context: TurnContext):
+        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+        session = db.Session()
+        text = turn_context.activity.text.split()
+
+        if db.getUserOnType(session, 'intro_user', helper.get_user_id(user)):
+            try:
+                group = text[1]
+                question_set = text[2]
+            except IndexError:
+                await turn_context.send_activity("You need to specify the name for the group and the question set")
+                return
+
+            channels = await TeamsInfo.get_team_channels(turn_context)
+            if (group in channels):
+                # Sample question set to test with
+                questions = [
+                    [   
+                        "1. What is love?",
+                        "2. Baby don't hurt me",
+                        "3. Don't hurt me",
+                        "4. No more"
+                    ],
+                    [
+                        "5. Is this the real life?",
+                        "6. Or is this just fantasy?",
+                        "7. Caught in a landslide",
+                        "8. No escape from reality"
+                    ]
+                ]
+
+                # TODO: Save progress of questions in database
+
+                response_text = f'Congratulations {group}! You now have unlocked question set {question_set}\n'
+                for question in questions[question_set]:
+                    response_text += f'{question}\n'
+                await turn_context.send_activity(response_text)
+            else:
+                await turn_context.send_activity("This group does not exist")
+                return
+        else:
+            await turn_context.send_activity("You are not allowed to perform this task! You need to be an Intro Member.")
+        session.close()
