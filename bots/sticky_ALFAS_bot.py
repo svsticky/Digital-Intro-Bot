@@ -700,16 +700,11 @@ class StickyALFASBot(TeamsActivityHandler):
 
         for row in sheet_values[1:]:
             mentor_group = db.getFirst(session, db.MentorGroup, 'name', row[0])
-            mentor_group.timeslot = row[1]
+            mentor_group.sticky_timeslot = row[1]
+            mentor_group.aes_timeslot = row[2]
             db.dbMerge(session, mentor_group)
-
-            time= self.string_to_datetime(row[1])
-            time_5 = time - datetime.timedelta(minutes=5)
-            time_1 = time - datetime.timedelta(minutes = 1)
-            self.scheduler.add_job(self.send_reminder, args=[turn_context, 1, mentor_group.channel_id],
-                                   trigger='cron', hour=time_1.hour, minute=time_1.minute)
-            self.scheduler.add_job(self.send_reminder, args=[turn_context, 5, mentor_group.channel_id],
-                                   trigger='cron', hour=time_5.hour, minute=time_5.minute)
+            self.create_job(turn_context, mentor_group.channel_id, row[1])
+            self.create_job(turn_context, mentor_group.channel_id, row[2])            
             
         self.scheduler.start()
         await turn_context.send_activity("All timeslots have been obtained.")
@@ -723,3 +718,12 @@ class StickyALFASBot(TeamsActivityHandler):
         hour, minute = int(time[:2]), int(time[3:])
         time = datetime.datetime(2020, 1, 1, hour, minute, 0)
         return time
+    
+    def create_job(self, turn_context: TurnContext, channel_id, string_time: str):
+        time= self.string_to_datetime(string_time)
+        time_5 = time - datetime.timedelta(minutes=5)
+        time_1 = time - datetime.timedelta(minutes=1)
+        self.scheduler.add_job(self.send_reminder, args=[turn_context, 1, channel_id],
+                                trigger='cron', hour=time_1.hour, minute=time_1.minute)
+        self.scheduler.add_job(self.send_reminder, args=[turn_context, 5, channel_id],
+                                trigger='cron', hour=time_5.hour, minute=time_5.minute)

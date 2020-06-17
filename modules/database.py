@@ -107,7 +107,8 @@ class MentorGroup(SQLAlchemyBase):
     channel_id = sa.Column(sa.String(50), index=True)
     parents = relationship("MentorUser")
     occupied = sa.Column(sa.Boolean, default=False)
-    timeslot = sa.Column(sa.String(50))
+    sticky_timeslot = sa.Column(sa.String(50))
+    aes_timeslot = sa.Column(sa.String(50))
 
 
 class Visit(SQLAlchemyBase):
