@@ -18,6 +18,9 @@ class DefaultConfig:
 
     UITHOF_APP_ID = os.getenv("UithofAppId")
     UITHOF_APP_PASSWORD = os.getenv("UithofAppPassword")
+
+    ADMIN_APP_ID = os.getenv("AdminAppId")
+    ADMIN_APP_PASSWORD = os.getenv("AdminAppPassword")
     
     MENTOR_PASSWORD = os.getenv("MentorPassword")
     INTRO_PASSWORD = os.getenv("IntroPassword")
@@ -28,3 +31,5 @@ class DefaultConfig:
     ALFAS_TIMESLOTS_RANGE = os.getenv("ALFASTimeslotsRange")
 
     MAIN_ADMIN = ["Niels Kwadijk", "Joris de Jong"]
+
+    TIME_ZONE = os.getenv("TimeZone")

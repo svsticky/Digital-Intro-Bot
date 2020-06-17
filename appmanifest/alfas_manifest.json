@@ -2,10 +2,10 @@
   "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.5/MicrosoftTeams.schema.json",
   "manifestVersion": "1.5",
   "version": "1.0.0",
-  "id": "d30b7ee2-98f9-4a72-bff3-c8262ef707ce",
-  "packageName": "com.teams.sample.svstickybot",
+  "id": "1a56b4e2-4840-4afd-bda1-d24f6c943977",
+  "packageName": "com.teams.sample.alfasbot",
   "developer": {
-    "name": "SvStickyBot",
+    "name": "ALFASbot",
     "websiteUrl": "https://www.microsoft.com",
     "privacyUrl": "https://www.teams.com/privacy",
     "termsOfUseUrl": "https://www.teams.com/termsofuser"
@@ -15,17 +15,17 @@
     "color": "icon-color.png"
   },
   "name": {
-    "short": "SvStickybot",
-    "full": "SvStickybot"
+    "short": "ALFASbot",
+    "full": "ALFASbot"
   },
   "description": {
-    "short": "Bot for thesvsticky introduction period",
-    "full": "Bot for thesvsticky introduction period"
+    "short": "Bot used by the ALFAS in the svsticky introduction period",
+    "full": "Bot used by the ALFAS in the svsticky introduction period"
   },
   "accentColor": "#FFFFFF",
   "bots": [
     {
-      "botId": "d30b7ee2-98f9-4a72-bff3-c8262ef707ce",
+      "botId": "1a56b4e2-4840-4afd-bda1-d24f6c943977",
       "scopes": [
         "personal",
         "groupchat",
@@ -42,8 +42,20 @@
           ],
           "commands": [
             {
-              "title": "Initialize",
+              "title": "MentionMe",
               "description": "Sends message with @mention of the sender"
+            },
+            {
+              "title": "Show Welcome",
+              "description": "Shows the welcome card"
+            },
+            {
+              "title": "MessageAllMembers",
+              "description": "Send 1 to 1 message to all members of the current conversation"
+            },
+            {
+              "title": "AvailableCommittees",
+              "description": "Show all available committees"
             }
           ]
         }

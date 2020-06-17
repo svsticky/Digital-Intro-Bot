@@ -3,9 +3,9 @@
   "manifestVersion": "1.5",
   "version": "1.0.0",
   "id": "d30b7ee2-98f9-4a72-bff3-c8262ef707ce",
-  "packageName": "com.teams.sample.svstickybot",
+  "packageName": "com.teams.sample.adminbot",
   "developer": {
-    "name": "SvStickyBot",
+    "name": "ADMINbot",
     "websiteUrl": "https://www.microsoft.com",
     "privacyUrl": "https://www.teams.com/privacy",
     "termsOfUseUrl": "https://www.teams.com/termsofuser"
@@ -15,12 +15,12 @@
     "color": "icon-color.png"
   },
   "name": {
-    "short": "SvStickybot",
-    "full": "SvStickybot"
+    "short": "ADMINbot",
+    "full": "ADMINbot"
   },
   "description": {
-    "short": "Bot for thesvsticky introduction period",
-    "full": "Bot for thesvsticky introduction period"
+    "short": "Admin bot for thesvsticky introduction period",
+    "full": "Admin bot for thesvsticky introduction period"
   },
   "accentColor": "#FFFFFF",
   "bots": [

@@ -6,10 +6,8 @@ from botbuilder.core.teams import TeamsActivityHandler, TeamsInfo
 from botbuilder.schema import CardAction, HeroCard, Mention, ConversationParameters
 from botbuilder.schema._connector_client_enums import ActionTypes
 import modules.database as db
+import modules.helper_funtions as helper
 from config import DefaultConfig
-from google_api import GoogleSheet
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-import datetime
 
 
 class StickyALFASBot(TeamsActivityHandler):
@@ -17,7 +15,6 @@ class StickyALFASBot(TeamsActivityHandler):
         self._app_id = app_id
         self._app_password = app_password
         self.CONFIG = DefaultConfig()
-        self.scheduler = AsyncIOScheduler(timezone="Europe/Amsterdam")
 
     async def on_message_activity(self, turn_context: TurnContext):
         """
@@ -28,11 +25,6 @@ class StickyALFASBot(TeamsActivityHandler):
         turn_context.activity.text = turn_context.activity.text.strip()
 
         # Based on a given command, the bot performs a function.
-
-        # Initialize the bot
-        if turn_context.activity.text == "InitializeBot":
-            await self.initialize(turn_context)
-            return
 
         # Add a committee
         if turn_context.activity.text.startswith("AddCommittee"):
@@ -97,32 +89,6 @@ class StickyALFASBot(TeamsActivityHandler):
         await turn_context.send_activity("You provided a non valid command, maybe you made a typo?")
         return
 
-    # Function that initializes the bot
-    async def initialize(self, turn_context: TurnContext):
-        # Get the user that sent the command
-        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
-        user_full_name = user.given_name + " " + user.surname
-        session = db.Session()
-        # Check if he or she has intro rights, if not abort the function
-        if not db.getUserOnType(session, 'intro_user', user.id) and user_full_name not in self.CONFIG.MAIN_ADMIN:
-            await turn_context.send_activity("You are not allowed to perform this command!")
-            session.close()
-            return
-
-        # Init channels
-        await self.init_channels(turn_context, session)
-
-        # Init members
-        await self.init_members(turn_context, session)
-
-        # Init timeslots
-        await self.init_timeslots(turn_context, session)
-
-        session.close()
-        #Feedback to user.
-        await turn_context.send_activity("All members have been added to the bot with their respective rights")
-        await turn_context.send_activity("Done initializing the bot.")
-
     # Obtains all intro members
     async def get_intro(self, turn_context: TurnContext):
         return_text = ''
@@ -140,7 +106,7 @@ class StickyALFASBot(TeamsActivityHandler):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         session = db.Session()
         #Command can only be done by an intro_user
-        if db.getUserOnType(session, 'intro_user', user.id):
+        if db.getUserOnType(session, 'intro_user', helper.get_user_id(user)):
             try:
                 committee_name = turn_context.activity.text.split()[1]
             except IndexError:
@@ -172,7 +138,7 @@ class StickyALFASBot(TeamsActivityHandler):
         # Again, check if the user is an intro user.
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         session = db.Session()
-        if not db.getUserOnType(session, 'intro_user', user.id):
+        if not db.getUserOnType(session, 'intro_user', helper.get_user_id(user)):
             await turn_context.send_activity("You do not have the rights to perform this action")
             session.close()
             return
@@ -205,7 +171,7 @@ class StickyALFASBot(TeamsActivityHandler):
         # Check if the user if a intro user.
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         session = db.Session()
-        if db.getUserOnType(session, 'intro_user', user.id):
+        if db.getUserOnType(session, 'intro_user', helper.get_user_id(user)):
             try:
                 mentor_group_name = turn_context.activity.text.split()[1]
             except IndexError:
@@ -236,7 +202,7 @@ class StickyALFASBot(TeamsActivityHandler):
     async def register_mentor_group(self, turn_context: TurnContext):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         session = db.Session()
-        if not db.getUserOnType(session, 'intro_user', user.id):
+        if not db.getUserOnType(session, 'intro_user', helper.get_user_id(user)):
             await turn_context.send_activity("You do not have the rights to perform this action")
             session.close()
             return
@@ -271,7 +237,7 @@ class StickyALFASBot(TeamsActivityHandler):
             sender = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
             existing_user = db.getUserOnType(session, 'intro_user', sender.id)
             if not existing_user:
-                new_user = db.IntroUser(user_teams_id=sender.id, user_name=sender.name)
+                new_user = db.IntroUser(user_teams_id=helper.get_user_id(sender), user_name=sender.name)
                 db.dbInsert(session, new_user)
                 await turn_context.send_activity("You have been successfully registered as an Intro Member")
             else:
@@ -294,11 +260,11 @@ class StickyALFASBot(TeamsActivityHandler):
             session = db.Session()
             sender = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
             mentor_group = db.getFirst(session, db.MentorGroup, 'name', mentor_group_name)
-            existing_user = db.getUserOnType(session, 'mentor_user', sender.id)
+            existing_user = db.getUserOnType(session, 'mentor_user', helper.get_user_id(sender))
 
             if not existing_user:
                 if mentor_group:
-                    new_user = db.MentorUser(user_teams_id=sender.id,
+                    new_user = db.MentorUser(user_teams_id=helper.get_user_id(sender),
                                             user_name=sender.name,
                                             mg_id=mentor_group.mg_id)
                     db.dbInsert(session, new_user)
@@ -327,11 +293,11 @@ class StickyALFASBot(TeamsActivityHandler):
             session = db.Session()
             sender = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
             committee = db.getFirst(session, db.Committee, 'name', committee_name)
-            existing_user = db.getUserOnType(session, 'committee_user', sender.id)
+            existing_user = db.getUserOnType(session, 'committee_user', helper.get_user_id(sender))
 
             if not existing_user:
                 if committee:
-                    new_user = db.CommitteeUser(user_teams_id=sender.id,
+                    new_user = db.CommitteeUser(user_teams_id=helper.get_user_id(sender),
                                                 user_name=sender.name,
                                                 committee_id=committee.committee_id)
                     db.dbInsert(session, new_user)
@@ -354,7 +320,8 @@ class StickyALFASBot(TeamsActivityHandler):
             return
 
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
-        mentor_db_user = db.getUserOnType(session, 'mentor_user', user.id)
+        print(user)
+        mentor_db_user = db.getUserOnType(session, 'mentor_user', helper.get_user_id(user))
         if not mentor_db_user:
             await turn_context.send_activity("Only a mentor can perform this action")
             session.close()
@@ -383,7 +350,7 @@ class StickyALFASBot(TeamsActivityHandler):
         #Get user from teams and database
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         session = db.Session()
-        db_user = db.getUserOnType(session, 'mentor_user', user.id)
+        db_user = db.getUserOnType(session, 'mentor_user', helper.get_user_id(user))
 
         #If exists in database...
         if db_user:
@@ -406,7 +373,7 @@ class StickyALFASBot(TeamsActivityHandler):
                 db.dbInsert(session, visit)
                 await turn_context.send_activity(f"The members of committee '{committee.name}' will be joining your channel soon!")
                 committee_message = MessageFactory.text(f"You are asked to join the channel of mentor group '{mentor_group.name}'")
-                await self.create_channel_conversation(turn_context, committee.channel_id, committee_message)
+                await helper.create_channel_conversation(turn_context, committee.channel_id, committee_message)
                 enroll_button = await self.create_enrollment_button(committee)
                 await turn_context.send_activity(enroll_button)
             else:
@@ -433,7 +400,7 @@ class StickyALFASBot(TeamsActivityHandler):
             enrollment = db.Enrollment(committee_id=committee_id, first_name=user.given_name,
                                        last_name=user.surname, email_address=user.email)
             db.dbInsert(session, enrollment)
-            await self.create_personal_conversation(turn_context, user, f"You have been added to the interest list of '{committee.name}'")
+            await helper.create_personal_conversation(turn_context, user, f"You have been added to the interest list of '{committee.name}'", self._app_id)
         session.close()
 
 
@@ -441,14 +408,14 @@ class StickyALFASBot(TeamsActivityHandler):
     async def release_committee(self, turn_context: TurnContext):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         session = db.Session()
-        db_user = db.getUserOnType(session, 'committee_user', user.id)
+        db_user = db.getUserOnType(session, 'committee_user', helper.get_user_id(user))
 
         if db_user:
             committee = db.getFirst(session, db.Committee, 'committee_id', db_user.committee_id)
             committee.occupied = False
             db.dbMerge(session, committee)
             release_message = MessageFactory.text("This committee has now been freed from occupation. Expect a new request soon!")
-            await self.create_channel_conversation(turn_context, committee.channel_id, release_message)
+            await helper.create_channel_conversation(turn_context, committee.channel_id, release_message)
         else:
             await turn_context.send_activity("You are not allowed to perform this command.")
         session.close()
@@ -461,123 +428,8 @@ class StickyALFASBot(TeamsActivityHandler):
             return_text += f'{member.id} {member.name}   \n'
         await turn_context.send_activity(return_text)
 
-    async def _mention_activity(self, turn_context: TurnContext):
-        mention = Mention(
-            mentioned=turn_context.activity.from_property,
-            text=f"<at>{turn_context.activity.from_property.name}</at>",
-            type="mention",
-        )
-
-        reply_activity = MessageFactory.text(f"Hello {mention.text}")
-        reply_activity.entities = [Mention().deserialize(mention.serialize())]
-        await turn_context.send_activity(reply_activity)
-
-    async def _update_card_activity(self, turn_context: TurnContext):
-        data = turn_context.activity.value
-        data["count"] += 1
-
-        card = CardFactory.hero_card(
-            HeroCard(
-                title="Welcome Card",
-                text=f"Updated count - {data['count']}",
-                buttons=[
-                    CardAction(
-                        type=ActionTypes.message_back,
-                        title="Update Card",
-                        value=data,
-                        text="UpdateCardAction",
-                    ),
-                    CardAction(
-                        type=ActionTypes.message_back,
-                        title="Message all members",
-                        text="MessageAllMembers",
-                    ),
-                    CardAction(
-                        type=ActionTypes.message_back,
-                        title="Delete card",
-                        text="Delete",
-                    ),
-                ],
-            )
-        )
-
-        updated_activity = MessageFactory.attachment(card)
-        updated_activity.id = turn_context.activity.reply_to_id
-        await turn_context.update_activity(updated_activity)
-
-    async def _message_all_members(self, turn_context: TurnContext):
-
-        team_members = await TeamsInfo.get_members(turn_context)
-
-        for member in team_members:
-            conversation_reference = TurnContext.get_conversation_reference(
-                turn_context.activity
-            )
-
-            conversation_parameters = ConversationParameters(
-                is_group=False,
-                bot=turn_context.activity.recipient,
-                members=[member],
-                tenant_id=turn_context.activity.conversation.tenant_id,
-            )
-
-            async def get_ref(tc1):
-                conversation_reference_inner = TurnContext.get_conversation_reference(
-                    tc1.activity
-                )
-                return await tc1.adapter.continue_conversation(
-                    conversation_reference_inner, send_message, self._app_id
-                )
-
-            async def send_message(tc2: TurnContext):
-                return await tc2.send_activity(
-                    f"Hello {member.name}. I'm a Teams conversation bot."
-                )  # pylint: disable=cell-var-from-loop
-
-            await turn_context.adapter.create_conversation(
-                conversation_reference, get_ref, conversation_parameters
-            )
-
-        await turn_context.send_activity(
-            MessageFactory.text("All messages have been sent")
-        )
-
     async def _delete_card_activity(self, turn_context: TurnContext):
         await turn_context.delete_activity(turn_context.activity.reply_to_id)
-
-    # Helper functions
-    async def create_channel_conversation(self, turn_context: TurnContext, teams_channel_id: str, message):
-        params = ConversationParameters(
-            is_group=True,
-            channel_data={"channel": {"id": teams_channel_id}},
-            activity=message
-        )
-        connector_client = await turn_context.adapter.create_connector_client(turn_context.activity.service_url)
-        await connector_client.conversations.create_conversation(params)
-
-    async def create_personal_conversation(self, turn_context: TurnContext, user, message):
-        conversation_reference = TurnContext.get_conversation_reference(turn_context.activity)
-        params = ConversationParameters(
-            is_group=False,
-            bot=turn_context.activity.recipient,
-            members=[user],
-            tenant_id=turn_context.activity.conversation.tenant_id,
-        )
-
-        async def get_ref(tc1):
-            conversation_reference_inner = TurnContext.get_conversation_reference(
-                tc1.activity
-            )
-            return await tc1.adapter.continue_conversation(
-                conversation_reference_inner, send_message, self._app_id
-            )
-
-        async def send_message(tc2: TurnContext):
-            return await tc2.send_activity(
-                message
-            )  # pylint: disable=cell-var-from-loop
-
-        await turn_context.adapter.create_conversation(conversation_reference, get_ref, params)
 
     async def create_enrollment_button(self, committee):
         card = CardFactory.hero_card(
@@ -595,134 +447,3 @@ class StickyALFASBot(TeamsActivityHandler):
             )
         )
         return MessageFactory.attachment(card)
-
-    async def init_channels(self, turn_context: TurnContext, session):
-        await turn_context.send_activity("Starting initialization of committees and mentor groups...")
-        added_groups = ""
-
-        # Get all channels of the team
-        channels = await TeamsInfo.get_team_channels(turn_context)
-
-        # For every channel we...
-        for channel in channels:
-            if channel.name is None:
-                continue
-
-            #Check if it is a "Mentorgroep" channel
-            if channel.name.startswith("Mentorgroep"):
-                # If so, add it to the database as a MentorGroup or update it.
-                group_name = channel.name.split()[1]
-                existing_mentor_group = db.getFirst(session, db.MentorGroup, 'name', group_name)
-
-                if not existing_mentor_group:
-                    mentor_group = db.MentorGroup(name=group_name, channel_id=channel.id)
-                    db.dbInsert(session, mentor_group)
-                else:
-                    existing_mentor_group.channel_id = channel.id
-                    existing_mentor_group.name = group_name
-                    db.dbMerge(session, existing_mentor_group)
-                # Notify the channel that it is now an ALFAS channel
-                init_message = MessageFactory.text(f"This channel is now the main ALFAS channel for Mentor group '{group_name}'")
-                await self.create_channel_conversation(turn_context, channel.id, init_message)
-                added_groups += f'{group_name}, '
-
-            #Check if it is a "Commissie" channel
-            if channel.name.startswith("Commissie"):
-                #If so, add it to the database as a Commissie or update it.
-                committee_name = channel.name.split()[1]
-                existing_committee = db.getFirst(session, db.Committee, 'name', committee_name)
-
-                if not existing_committee:
-                    committee = db.Committee(name=committee_name, info="", channel_id=channel.id)
-                    db.dbInsert(session, committee)
-                else:
-                    existing_committee.channel_id = channel.id
-                    existing_committee.name = committee_name
-                    db.dbMerge(session, existing_committee)
-                # Notify the channel that it is now an ALFAS channel
-                init_message = MessageFactory.text(f"This channel is now the main ALFAS channel for Committee '{committee_name}'")
-                await self.create_channel_conversation(turn_context, channel.id, init_message)
-                added_groups += f'{committee_name}, '
-        # Done with the channels
-        await turn_context.send_activity(f"The following groups have been added: {added_groups}")
-        await turn_context.send_activity("All committees and mentor groups have been added.")
-
-    async def init_members(self, turn_context: TurnContext, session):
-        # Starting with adding members. Members are retrieved from a private google sheet.
-        sheet_values = GoogleSheet().get_members()
-        # Get members from teams
-        members = await TeamsInfo.get_members(turn_context)
-
-        # Double for loop which is sad... If you can come up with something better, let me know.
-        # For all members in the sheet...
-        for row in sheet_values[1:]:
-            #get corresponding member
-            matching_member = next(filter(lambda member: member.email == row[2], members), None)
-
-            if matching_member is None:
-                continue
-            database_member = None
-            # Get from the database what member the member needs to become and save it as the right user.
-            if row[3] == "Intro":
-                user = db.getUserOnType(session, 'intro_user', matching_member.id)
-                if not user:
-                    database_member = db.IntroUser(user_teams_id=matching_member.id,
-                                                   user_name=matching_member.name)
-            elif row[3] == "Mentor":
-                user = db.getUserOnType(session, 'mentor_user', matching_member.id)
-                if not user:
-                    mentor_group = db.getFirst(session, db.MentorGroup, 'name', row[4])
-                    if mentor_group:
-                        database_member = db.MentorUser(user_teams_id=matching_member.id,
-                                                        user_name=matching_member.name,
-                                                        mg_id=mentor_group.mg_id)
-                    else:
-                        await turn_context.send_activity(f"Mentor group for '{matching_member.name} does not exist!")
-            elif row[3] == "Commissie":
-                user = db.getUserOnType(session, 'committee_user', matching_member.id)
-                if not user:
-                    committee = db.getFirst(session, db.Committee, 'name', row[4])
-                    if committee:
-                        database_member = db.CommitteeUser(user_teams_id=matching_member.id,
-                                                           user_name=matching_member.name,
-                                                           committee_id=committee.committee_id)
-                    else:
-                        await turn_context.send_activity(f"Committee for '{matching_member.name}' does not exist!")
-
-            # Insert if a database_member is created (this is not the case if the user already exists in the database).
-            if database_member is not None:
-                db.dbInsert(session, database_member)
-
-    async def init_timeslots(self, turn_context: TurnContext, session):
-        # Obtain timeslots sheet
-        await turn_context.send_activity("Starting obtaining timeslots for mentorgroups...")
-        sheet_values = GoogleSheet().get_timeslots()
-
-        for row in sheet_values[1:]:
-            mentor_group = db.getFirst(session, db.MentorGroup, 'name', row[0])
-            mentor_group.sticky_timeslot = row[1]
-            mentor_group.aes_timeslot = row[2]
-            db.dbMerge(session, mentor_group)
-            self.create_job(turn_context, mentor_group.channel_id, row[1], "Sticky")
-            self.create_job(turn_context, mentor_group.channel_id, row[2], "Aeskwadraat")          
-            
-        self.scheduler.start()
-        await turn_context.send_activity("All timeslots have been obtained.")
-    
-    async def send_reminder(self, turn_context: TurnContext, minutes, channel_id, association):
-        message = MessageFactory.text(f"Reminder! You are expected visit the registration booth of {association} in {minutes} minutes.")
-        await self.create_channel_conversation(turn_context, channel_id, message)
-
-    def string_to_datetime(self, time: str):
-        hour, minute = int(time[:2]), int(time[3:])
-        time = datetime.datetime(2020, 1, 1, hour, minute, 0)
-        return time
-    
-    def create_job(self, turn_context: TurnContext, channel_id, string_time: str, association):
-        time= self.string_to_datetime(string_time)
-        time_5 = time - datetime.timedelta(minutes=5)
-        time_1 = time - datetime.timedelta(minutes=1)
-        self.scheduler.add_job(self.send_reminder, args=[turn_context, 1, channel_id, association],
-                                trigger='cron', hour=time_1.hour, minute=time_1.minute)
-        self.scheduler.add_job(self.send_reminder, args=[turn_context, 5, channel_id, association],
-                                trigger='cron', hour=time_5.hour, minute=time_5.minute)

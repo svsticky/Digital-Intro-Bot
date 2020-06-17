@@ -14,7 +14,7 @@ from botbuilder.core import (
 from botbuilder.core.integration import aiohttp_error_middleware
 from botbuilder.schema import Activity, ActivityTypes
 
-from bots import StickyALFASBot, StickyC88Bot, StickyUITHOFBot
+from bots import StickyALFASBot, StickyC88Bot, StickyUITHOFBot, StickyADMINBot
 from config import DefaultConfig
 
 CONFIG = DefaultConfig()
@@ -29,6 +29,9 @@ C88_ADAPTER = BotFrameworkAdapter(C88_SETTINGS)
 
 UITHOF_SETTINGS = BotFrameworkAdapterSettings(CONFIG.UITHOF_APP_ID, CONFIG.UITHOF_APP_PASSWORD)
 UITHOF_ADAPTER = BotFrameworkAdapter(UITHOF_SETTINGS)
+
+ADMIN_SETTINGS = BotFrameworkAdapterSettings(CONFIG.ADMIN_APP_ID, CONFIG.ADMIN_APP_PASSWORD)
+ADMIN_ADAPTER = BotFrameworkAdapter(ADMIN_SETTINGS)
 
 
 # Catch-all for errors.
@@ -62,6 +65,7 @@ async def on_error(context: TurnContext, error: Exception):
 ALFAS_ADAPTER.on_turn_error = on_error
 C88_ADAPTER.on_turn_error = on_error
 UITHOF_ADAPTER.on_turn_error = on_error
+ADMIN_ADAPTER.on_turn_error = on_error
 
 # If the channel is the Emulator, and authentication is not in use, the AppId will be null.
 # We generate a random AppId for this case only. This is not required for production, since
@@ -69,12 +73,14 @@ UITHOF_ADAPTER.on_turn_error = on_error
 ALFAS_APP_ID = ALFAS_SETTINGS.app_id if ALFAS_SETTINGS.app_id else uuid.uuid4()
 C88_APP_ID = C88_SETTINGS.app_id if C88_SETTINGS.app_id else uuid.uuid4()
 UITHOF_APP_ID = UITHOF_SETTINGS.app_id if UITHOF_SETTINGS.app_id else uuid.uuid4()
+ADMIN_APP_ID = ADMIN_SETTINGS.app_id if ADMIN_SETTINGS.app_id else uuid.uuid4()
 
 # Create the Bot
 
 ALFAS_BOT = StickyALFASBot(CONFIG.ALFAS_APP_ID, CONFIG.ALFAS_APP_PASSWORD)
 C88_BOT = StickyC88Bot(CONFIG.C88_APP_ID, CONFIG.C88_APP_PASSWORD)
 UITHOF_BOT = StickyUITHOFBot(CONFIG.UITHOF_APP_ID, CONFIG.UITHOF_APP_PASSWORD)
+ADMIN_BOT = StickyADMINBot(CONFIG.ADMIN_APP_ID, CONFIG.ADMIN_APP_PASSWORD)
 
 
 # Listen for incoming requests on /api/messages.
@@ -123,11 +129,28 @@ async def uithof_messages(req: Request) -> Response:
         return json_response(data=response.body, status=response.status)
     return Response(status=HTTPStatus.OK)
 
+async def admin_messages(req: Request) -> Response:
+    # Main bot message handler.
+    if "application/json" in req.headers["Content-Type"]:
+        body = await req.json()
+    else:
+        return Response(status=HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
+
+    activity = Activity().deserialize(body)
+    auth_header = req.headers["Authorization"] if "Authorization" in req.headers else ""
+
+    response = await ADMIN_ADAPTER.process_activity(activity, auth_header, ADMIN_BOT.on_turn)
+    if response:
+        return json_response(data=response.body, status=response.status)
+    return Response(status=HTTPStatus.OK)
+
+
 
 APP = web.Application(middlewares=[aiohttp_error_middleware])
 APP.router.add_post("/api/alfas/messages", alfas_messages)
 APP.router.add_post("/api/c88/messages", c88_messages)
 APP.router.add_post("/api/uithof/messages", uithof_messages)
+APP.router.add_post("/api/admin/messages", admin_messages)
 
 
 if __name__ == "__main__":
