@@ -31,6 +31,6 @@ class DefaultConfig:
     ALFAS_TIMESLOTS_RANGE = os.getenv("ALFASTimeslotsRange")
     CRAZY88_QUESTION_RANGE = os.getenv("Crazy88QuestionRage")
 
-    MAIN_ADMIN = ["Niels Kwadijk", "Joris de Jong"]
+    MAIN_ADMIN = ["Niels Kwadijk", "Joris de Jong", "Merijn Stiekema"]
 
     TIME_ZONE = os.getenv("TimeZone")
