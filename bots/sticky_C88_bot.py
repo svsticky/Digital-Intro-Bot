@@ -25,8 +25,8 @@ class StickyC88Bot(TeamsActivityHandler):
         # Based on a given command, the bot performs a function.
 
         # Send a certain set of activities to the given group
-        if turn_context.activity.text.startswith("SendQuestions"):
-            await self.send_questions(turn_context)
+        if turn_context.activity.text.startswith("UnlockSet"):
+            await self.unlock_set(turn_context)
             return
 
         if turn_context.activity.text.startswith("Answer"):
@@ -35,21 +35,22 @@ class StickyC88Bot(TeamsActivityHandler):
         if turn_context.activity.text.startswith("GetQuestions"):
             pass
 
-    async def send_questions(self, turn_context: TurnContext):
+    async def unlock_set(self, turn_context: TurnContext):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         session = db.Session()
         text = turn_context.activity.text.split()
+        print(turn_context.activity.channel_data)
 
-        if db.getUserOnType(session, 'intro_user', helper.get_user_id(user)):
+        # if db.getUserOnType(session, 'intro_user', helper.get_user_id(user)):
+        if 1==1:
             try:
-                group = text[1]
-                question_set = text[2]
+                question_set = int(text[1]) - 1 # Arrays start at 0 instead of 0 :)
             except IndexError:
-                await turn_context.send_activity("You need to specify the name for the group and the question set")
+                await turn_context.send_activity(f"You need to specify the question set which you want to unlock for {turn_context.cha}")
                 return
 
-            channels = await TeamsInfo.get_team_channels(turn_context)
-            if (group in channels):
+            # Check if mentor group is in database
+            if 1==1:
                 # Sample question set to test with
                 questions = [
                     [   
@@ -68,12 +69,12 @@ class StickyC88Bot(TeamsActivityHandler):
 
                 # TODO: Save progress of questions in database
 
-                response_text = f'Congratulations {group}! You now have unlocked question set {question_set}\n'
+                response_text = f'Congratulations {"group_name"}! You now have unlocked question set {question_set}.<br>'
                 for question in questions[question_set]:
-                    response_text += f'{question}\n'
+                    response_text += f'{question}<br>'
                 await turn_context.send_activity(response_text)
             else:
-                await turn_context.send_activity("This group does not exist")
+                await turn_context.send_activity("This is not a valid mentor group does not exist")
                 return
         else:
             await turn_context.send_activity("You are not allowed to perform this task! You need to be an Intro Member.")
