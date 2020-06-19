@@ -3,7 +3,7 @@ from sqlalchemy import event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, with_polymorphic
 
-database = "sqlite:///C:\\data\\database.sqlite"
+database = "sqlite:///data/database.sqlite"
 
 SQLAlchemyBase = declarative_base()
 engine = sa.create_engine(database, echo=False)

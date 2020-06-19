@@ -1,0 +1,58 @@
+{
+    "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.5/MicrosoftTeams.schema.json",
+    "manifestVersion": "1.5",
+    "version": "1.0.0",
+    "id": "27b82ac5-f3f7-4ad3-890a-2783b51df3da",
+    "packageName": "com.teams.sample.c88bot",
+    "developer": {
+      "name": "C88bot",
+      "websiteUrl": "https://www.microsoft.com",
+      "privacyUrl": "https://www.teams.com/privacy",
+      "termsOfUseUrl": "https://www.teams.com/termsofuser"
+    },
+    "icons": {
+      "outline": "icon-outline.png",
+      "color": "icon-color.png"
+    },
+    "name": {
+      "short": "C88bot",
+      "full": "Crazy 88 bot"
+    },
+    "description": {
+      "short": "Bot used for Crazy 88",
+      "full": "Bot used for the Crazy 88 during the computing & information science introduction period"
+    },
+    "accentColor": "#FFFFFF",
+    "bots": [
+      {
+        "botId": "27b82ac5-f3f7-4ad3-890a-2783b51df3da",
+        "scopes": [
+          "personal",
+          "groupchat",
+          "team"
+        ],
+        "supportsFiles": true,
+        "isNotificationOnly": false,
+        "commandLists": [
+          {
+            "scopes": [
+              "personal",
+              "groupchat",
+              "team"
+            ],
+            "commands": [
+              {
+                "title": "FetchQuestions",
+                "description": "A member of the intro committee can fetch the Crazy88 questions from the Google sheet"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "permissions": [
+      "identity",
+      "messageTeamMembers"
+    ],
+    "validDomains": []
+  } 
