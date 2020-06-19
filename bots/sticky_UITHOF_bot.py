@@ -24,7 +24,7 @@ class StickyUITHOFBot(TeamsActivityHandler):
 
         # Return all locations that are available at this moment
         if turn_context.activity.text == "AvailableLocations":
-            await self.available_committees(turn_context)
+            await self.available_locations(turn_context)
             return
 
         # Choose a locations for a mentor group to visit.
