@@ -70,10 +70,10 @@ class CommitteeUser(User):
         'polymorphic_identity':'committee_user',
     }
 
-class HelperUser(User):
-    __tablename__ = 'helper_user'
+class USPHelperUser(User):
+    __tablename__ = 'usp_helper_user'
     user_id = sa.Column(sa.Integer, sa.ForeignKey('user.user_id'), primary_key=True, unique=True)
-    usp_id = sa.Column(sa.Integer, sa.ForeignKey('uithof_location.location_id'))
+    usp_id = sa.Column(sa.Integer, sa.ForeignKey('usp_location.location_id'))
 
     __mapper_args__ = {
         'polymorphic_identity':'committee_user',
@@ -98,7 +98,7 @@ class IntroUser(User):
     }
 
 class USPLocation(SQLAlchemyBase):
-    __tablename__ = 'uithof_location'
+    __tablename__ = 'usp_location'
     location_id = sa.Column(sa.Integer, primary_key=True)
     name = sa.Column(sa.String(50), unique=True)
     info = sa.Column(sa.String(50))

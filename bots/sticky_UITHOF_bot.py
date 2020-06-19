@@ -2,7 +2,8 @@ from botbuilder.core import CardFactory, TurnContext, MessageFactory
 from botbuilder.core.teams import TeamsActivityHandler, TeamsInfo
 from botbuilder.schema import CardAction, HeroCard, Mention, ConversationParameters
 from botbuilder.schema._connector_client_enums import ActionTypes
-#import modules.database as db
+import modules.database as db
+import modules.helper_funtions as helper
 from config import DefaultConfig
 
 
@@ -13,6 +14,9 @@ class StickyUITHOFBot(TeamsActivityHandler):
         self.CONFIG = DefaultConfig()
 
     async def on_message_activity(self, turn_context: TurnContext):
+        TurnContext.remove_recipient_mention(turn_context.activity)
+        turn_context.activity.text = turn_context.activity.text.strip()
+
         #accept the group
         if turn_context.activity.text.startswith("Accept"):
             await self.accept(turn_context)
@@ -119,20 +123,20 @@ class StickyUITHOFBot(TeamsActivityHandler):
         )
         return MessageFactory.attachment(card)
 
-    async def accept(self):
+    async def accept(self, turn_context: TurnContext):
         pass
 
     async def release_location(self, turn_context: TurnContext):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         session = db.Session()
-        db_user = db.getUserOnType(session, 'helper_user', helper.get_user_id(user))
+        db_user = db.getUserOnType(session, 'usp_helper_user', helper.get_user_id(user))
 
         if db_user:
             location = db.getFirst(session, db.USPLocation, 'location_id', db_user.usp_id)
             location.occupied = False
             db.dbMerge(session, location)
             release_message = MessageFactory.text("This location has now been freed from occupation. Expect a new request soon!")
-            await helper.create_channel_conversation(turn_context, committee.channel_id, release_message)
+            await helper.create_channel_conversation(turn_context, location.channel_id, release_message)
         else:
             await turn_context.send_activity("You are not allowed to perform this command.")
         session.close()
