@@ -2,8 +2,10 @@ from botbuilder.core import CardFactory, TurnContext, MessageFactory
 from botbuilder.core.teams import TeamsActivityHandler, TeamsInfo
 from botbuilder.schema import CardAction, HeroCard, Mention, ConversationParameters
 from botbuilder.schema._connector_client_enums import ActionTypes
-#import modules.database as db
+import modules.database as db
+import modules.helper_funtions as helper
 from config import DefaultConfig
+from google_api import GoogleSheet
 
 
 class StickyC88Bot(TeamsActivityHandler):
@@ -27,7 +29,11 @@ class StickyC88Bot(TeamsActivityHandler):
             await self.fetch_questions(turn_context)
             return
 
-        async def fetch_questions(self, turn_context: TurnContext):
+    async def fetch_questions(self, turn_context: TurnContext):
+        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+        session = db.Session()
+        
+        if db.getUserOnType(session, 'intro_user', helper.get_user_id(user)):
             await turn_context.send_activity("Fetching all Crazy 88 questions...")
             session = db.Session()
             sheet_values = GoogleSheet().get_questions()
@@ -43,4 +49,6 @@ class StickyC88Bot(TeamsActivityHandler):
                     db.dbMerge(session, question)
                     
             await turn_context.send_activity(f"Finished getting all Crazy 88 questions! Added / updated {len(sheet_values)} values")
-            session.close()
+        else:
+            await turn_context.send_activity("You are not allowed to perform this task! You need to be an Intro Member.")
+        session.close()

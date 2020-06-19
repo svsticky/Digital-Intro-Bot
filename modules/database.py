@@ -51,6 +51,20 @@ def getAssociationPlanning(session, mg_id):
     sticky_time = mentor_group.sticky_timeslot
     return aes_time, sticky_time
 
+def getQuestionsFromSet(session, group_id, questionSet):
+    return_value = []
+    y = questionSet * 8
+
+    group_questions = getFirst(session, Crazy88Progress, 'mg_id', group_id)
+    for x in range(1, 9):
+        question_nr = y+x
+        question_value = getattr(group_questions, f'opdr{question_nr}')
+        question = getFirst(session, Questions, 'opdr', question_nr)
+
+        if question_value is 1 and question is not None:
+            return_value.append(question.question)
+
+    return return_value
 
 #TODO: build database tables
 
@@ -118,7 +132,7 @@ class MentorGroup(SQLAlchemyBase):
 
 
 class Visit(SQLAlchemyBase):
-    __tablename__ = 'mentorgroup'
+    __tablename__ = 'visit'
     visit_id = sa.Column(sa.Integer, primary_key=True)
     mg_id = sa.Column(sa.String(50), index=True)
     committee_id = sa.Column(sa.String(50))
@@ -131,6 +145,21 @@ class Enrollment(SQLAlchemyBase):
     last_name = sa.Column(sa.String(50))
     email_address = sa.Column(sa.String(50))
     __table_args__ = (sa.UniqueConstraint('committee_id', 'email_address', name='_id_email_uc'),)
+
+
+# Crazy 88 Tables
+class Crazy88Progress(SQLAlchemyBase):
+    __tablename__ = 'crazy88_progress'
+    mg_id = sa.Column(sa.String(50), sa.ForeignKey('mentor_group.channel_id'), primary_key=True)
+    # This creates 88 fields with integers. Per assignment have 0: locked, 1: unlocked, 2: completed.
+    # This means that the questions that can be shown are the ones that are unlocked and not completed yet.
+    for i in range(1, 89):
+        exec(f'opdr{i} = sa.Column(sa.Integer, default=0)')
+
+class Questions(SQLAlchemyBase):
+    __tablename__ = 'questions'
+    opdr = sa.Column(sa.String(5), primary_key=True) # References to each opdrX column in crazy88_progress
+    question = sa.Column(sa.String(150))
 
 
 @event.listens_for(User, 'mapper_configured')
