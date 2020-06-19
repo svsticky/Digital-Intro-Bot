@@ -11,7 +11,7 @@ This repository contains all the Teams bots that are used during the digital svs
 ## Register your bot with microsoft
 This way of registering your bot assumes that you do not have an active Azure subscription.
 
-- Go to the [Bot Framework Website](dev.botframework.com/bots/new).
+- Go to the [Bot Framework Website](https://dev.botframework.com/bots/new).
 - Login with the microsoft account that you want to connect the bot to.
 - Fill in all the required information. The messaging endpoint will be the server on which the bot is running. Note that this MUST BE HTTPS (that is: secure).
 - Next, click the `Create Microsoft App ID and password` button. This will lead you to the Azure portal. Here click `New registration`.
