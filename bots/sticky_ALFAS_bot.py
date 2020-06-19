@@ -79,6 +79,10 @@ class StickyALFASBot(TeamsActivityHandler):
         if turn_context.activity.text == "Release":
             await self.release_committee(turn_context)
             return
+        
+        if turn_context.activity.text == "Associations":
+            await self.association_planning(turn_context)
+            return
 
         # Get all intro members
         if turn_context.activity.text == "GetIntro":
@@ -317,6 +321,7 @@ class StickyALFASBot(TeamsActivityHandler):
         session = db.Session()
         if not db.getFirst(session, db.MentorGroup, 'channel_id', channel_id):
             await turn_context.send_activity("You can only perform this command from a Mentorgroep channel")
+            session.close()
             return
 
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
@@ -403,8 +408,6 @@ class StickyALFASBot(TeamsActivityHandler):
             await helper.create_personal_conversation(turn_context, user, f"You have been added to the interest list of '{committee.name}'", self._app_id)
         session.close()
 
-
-
     async def release_committee(self, turn_context: TurnContext):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         session = db.Session()
@@ -419,6 +422,28 @@ class StickyALFASBot(TeamsActivityHandler):
         else:
             await turn_context.send_activity("You are not allowed to perform this command.")
         session.close()
+
+    async def association_planning(self, turn_context: TurnContext):
+        channel_id = turn_context.activity.channel_data['teamsChannelId']
+        session = db.Session()
+        mentor_group = db.getFirst(session, db.MentorGroup, 'channel_id', channel_id)
+        if not mentor_group:
+            await turn_context.send_activity("You can only perform this command from a Mentorgroep channel")
+            session.close()
+            return
+
+        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+        mentor_db_user = db.getUserOnType(session, 'mentor_user', helper.get_user_id(user))
+        if not mentor_db_user:
+            await turn_context.send_activity("Only a mentor can perform this action")
+            session.close()
+            return
+
+        aes_time, sticky_time = db.getAssociationPlanning(session, mentor_group.mg_id)
+
+        await turn_context.send_activity("You are expected to arrive at the registration booths at the following times:\n\n"\
+                                         f"Sticky: {sticky_time} hours\n\n"\
+                                         f"Aes-kwadraat: {aes_time} hours")      
 
     #Example functions!
     async def return_members(self, turn_context: TurnContext):

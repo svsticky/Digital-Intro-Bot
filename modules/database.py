@@ -45,6 +45,12 @@ def getAllUsersOnType(session, user_type):
 def getEnrollment(session, committee_id, email):
     return session.query(Enrollment).filter((Enrollment.committee_id == committee_id) & (Enrollment.email_address == email)).first()
 
+def getAssociationPlanning(session, mg_id):
+    mentor_group = session.query(MentorGroup).filter(MentorGroup.mg_id == mg_id).first()
+    aes_time = mentor_group.aes_timeslot
+    sticky_time = mentor_group.sticky_timeslot
+    return aes_time, sticky_time
+
 
 #TODO: build database tables
 
