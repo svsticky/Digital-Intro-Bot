@@ -46,3 +46,10 @@ class GoogleSheet:
                                     range=self.config.ALFAS_TIMESLOTS_RANGE).execute()
         values = result.get('values', [])
         return values
+
+    def get_questions(self):
+        sheet = self.service.spreadsheets()
+        result = sheet.values().get(spreadsheetId=self.config.ALFAS_INFOSHEET_ID,
+                                    range=self.config.CRAZY88_QUESTION_RANGE).execute()
+        values = result.get('values', [])
+        return values
