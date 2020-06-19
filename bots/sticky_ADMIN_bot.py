@@ -81,9 +81,18 @@ class StickyADMINBot(TeamsActivityHandler):
                 existing_mentor_group = db.getFirst(session, db.MentorGroup, 'name', group_name)
 
                 if not existing_mentor_group:
+                    # Create mentor group
                     mentor_group = db.MentorGroup(name=group_name, channel_id=channel.id)
                     db.dbInsert(session, mentor_group)
+                    # Create crazy 88 progress for this group
+                    crazy88_group = db.Crazy88Progress(mg_id=channel.id)
+                    db.dbInsert(session, crazy88_group)
                 else:
+                    # Update Crazy88 progress
+                    existing_c88_progress = db.getFirst(session, db.Crazy88Progress, 'mg_id', existing_mentor_group.channel_id)
+                    existing_c88_progress.mg_id = channel.id
+                    db.dbMerge(session, existing_c88_progress)
+                    # Update mentor group data
                     existing_mentor_group.channel_id = channel.id
                     existing_mentor_group.name = group_name
                     db.dbMerge(session, existing_mentor_group)

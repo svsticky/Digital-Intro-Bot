@@ -40,51 +40,36 @@ class StickyC88Bot(TeamsActivityHandler):
         channel_id = turn_context.activity.channel_data['teamsChannelId']
         session = db.Session()
         text = turn_context.activity.text.split()
-        print(turn_context.activity.channel_data)
 
         if db.getUserOnType(session, 'intro_user', helper.get_user_id(user)):
             try:
-                question_set = int(text[1]) - 1 # Arrays start at 0 instead of 0 :)
+                question_set = int(text[1])
             except IndexError:
                 await turn_context.send_activity(f"You need to specify the question set which you want to unlock for {turn_context.cha}")
                 return
 
-            progress = db.getFirst(session, db.Crazy88Progress, 'group', channel_id)
+            progress = db.getFirst(session, db.Crazy88Progress, 'mg_id', channel_id)
             try:
                 if not progress:
-                    await turn_context.send_activity("This mentor group does not exist") 
-                    return
-                elif not progress[f"set{question_set}"]:
-                    Sample question set to test with
-                    questions = [
-                        [   
-                            "1. What is love?",
-                            "2. Baby don't hurt me",
-                            "3. Don't hurt me",
-                            "4. No more"
-                        ],
-                        [
-                            "5. Is this the real life?",
-                            "6. Or is this just fantasy?",
-                            "7. Caught in a landslide",
-                            "8. No escape from reality"
-                        ]
-                    ]
+                    await turn_context.send_activity("This mentor group does not exist")
+                elif question_set < 1 & question_set > 8:
+                    await turn_context.send_activity("This is not a valid set")
+                else:                    
+                    # # Unlock all questions for a given set
+                    # # Unlock is still broken, complains about a locked database
+                    # y = 8 * question_set
+                    # for x in range(1, 9):
+                    #     setattr(progress, f"opdr{y+x}", 1)
 
-                    progress[f"set{question_set}"] = True
-
-                    db.dbMerge(session, progress)
-
-                    response_text = f'Congratulations {"group_name"}! You now have unlocked question set {question_set}.<br>'
-                    for question in questions[question_set]:
+                    response_text = f'Congratulations! You now have unlocked question set {question_set}.<br>'
+                    
+                    questions = db.getQuestionsFromSet(session, channel_id, question_set - 1)
+                    for question in questions:
                         response_text += f'{question}<br>'
+
                     await turn_context.send_activity(response_text)
-                else:
-                    await turn_context.send_activity("This is not a valid set number")
-                    return
             except IndexError:
                 await turn_context.send_activity("This question set does not exist")
-                return
         else:
             await turn_context.send_activity("You are not allowed to perform this task! You need to be an Intro Member.")
         session.close()
