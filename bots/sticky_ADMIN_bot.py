@@ -59,7 +59,7 @@ class StickyADMINBot(TeamsActivityHandler):
         await turn_context.send_activity("Done initializing the bot.")
     
     async def init_channels(self, turn_context: TurnContext, session):
-        await turn_context.send_activity("Starting initialization of committees and mentor groups...")
+        await turn_context.send_activity("Starting initialization of committees and mentor groups and locations...")
         added_groups = ""
 
         # Get all channels of the team
@@ -105,9 +105,28 @@ class StickyADMINBot(TeamsActivityHandler):
                 init_message = MessageFactory.text(f"This channel is now the main ALFAS channel for Committee '{committee_name}'")
                 await helper.create_channel_conversation(turn_context, channel.id, init_message)
                 added_groups += f'{committee_name}, '
+
+            #check if it is a "USP" location channel
+            if channel.name.startswith("USP"):
+                #If so, add it to the database as a Location or update it
+                location_name = channel.name.split()[1]
+                existing_location = db.getFirst(session, db.USPLocation, 'name', location_name)
+
+                if not existing_location:
+                    location = db.USPLocation(name=location_name, info="", channel_id=channel.id)
+                    db.dbInsert(session, location)
+                else:
+                    existing_location.channel_id = channel.id
+                    existing_location.name = location_name
+                    db.dbMerge(session, existing_location)
+                # Notify the channel that it is now a USP location channel
+                init_message = MessageFactory.text(f"This channel is now the main USP channel for location '{location_name}'")
+                await helper.create_channel_conversation(turn_context, channel.id, init_message)
+                added_groups += f'{location_name}, '
+
         # Done with the channels
         await turn_context.send_activity(f"The following groups have been added: {added_groups}")
-        await turn_context.send_activity("All committees and mentor groups have been added.")
+        await turn_context.send_activity("All committees, mentor groups and USP locations have been added.")
 
     async def init_members(self, turn_context: TurnContext, session):
         # Starting with adding members. Members are retrieved from a private google sheet.
