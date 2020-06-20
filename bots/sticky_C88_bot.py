@@ -7,7 +7,6 @@ import modules.helper_funtions as helper
 from config import DefaultConfig
 from google_api import GoogleSheet
 
-
 class StickyC88Bot(TeamsActivityHandler):
     def __init__(self, app_id: str, app_password: str):
         self._app_id = app_id
@@ -49,19 +48,23 @@ class StickyC88Bot(TeamsActivityHandler):
                 return
 
             progress = db.getFirst(session, db.Crazy88Progress, 'mg_id', channel_id)
+            start_of_set = 8 * (question_set - 1)
+
             try:
                 if question_set < 1 & question_set > 8:
                     await turn_context.send_activity("This is not a valid set")
-                elif not progress:
+                elif not progress: 
+                    # Check if this mentor group exists by checking if they have any progress
                     await turn_context.send_activity("This mentor group does not exist")
+                elif getattr(progress, f"opdr{start_of_set+1}") != 0:
+                    # Check if question has already been unlocked or answered
+                    await turn_context.send_activity("This set has already been unlocked for this group!")
                 else:                    
                     # Unlock all questions for a given set
-                    y = 8 * (question_set - 1)
                     for x in range(1, 9):
-                        setattr(progress, f"opdr{y+x}", 1)
+                        setattr(progress, f"opdr{start_of_set+x}", 1)
 
                     db.dbMerge(session, progress)
-
                     response_text = f'Congratulations! You now have unlocked question set {question_set}.<br>'
                     
                     questions = db.getQuestionsFromSet(session, channel_id, question_set - 1)
