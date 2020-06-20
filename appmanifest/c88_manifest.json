@@ -42,8 +42,16 @@
             ],
             "commands": [
               {
-                "title": "FetchQuestions",
-                "description": "A member of the intro committee can fetch the Crazy88 questions from the Google sheet"
+                "title": "UnlockSet",
+                "description": "A helper can unlock a set of questions in a mentor group"
+              },
+              {
+                "title": "Answer",
+                "description": "Answer one the Crazy 88 questions"
+              },
+              {
+                "title": "GetQuestions",
+                "description": "See all questions which you still have to answer"
               }
             ]
           }

@@ -54,6 +54,9 @@ class StickyADMINBot(TeamsActivityHandler):
         # Init timeslots
         await self.init_timeslots(turn_context, session)
 
+        # Fetch questions for crazy 88
+        await self.fetch_crazy88_questions(turn_context, session)
+
         session.close()
         #Feedback to user.
         await turn_context.send_activity("All members have been added to the bot with their respective rights")
@@ -177,6 +180,23 @@ class StickyADMINBot(TeamsActivityHandler):
         if not self.scheduler.running:
             self.scheduler.start()
         await turn_context.send_activity("All timeslots have been obtained.")
+
+    async def fetch_crazy88_questions(self, turn_context: TurnContext, session):
+        # Obtain questions from Google sheets 
+        await turn_context.send_activity("Fetching all Crazy 88 questions...")
+        sheet_values = GoogleSheet().get_questions()
+
+        for i, q in enumerate(sheet_values):
+            question = db.getFirst(session, db.Questions, 'opdr', i+1)
+            q = q[0]
+            if not question:
+                new_question = db.Questions(opdr=i+1, question=q)
+                db.dbInsert(session, new_question)
+            else:
+                question.question = q
+                db.dbMerge(session, question)
+                
+        await turn_context.send_activity(f"Finished getting all Crazy 88 questions! Added / updated {len(sheet_values)} values")
     
     async def send_reminder(self, turn_context: TurnContext, minutes, channel_id, association):
         message = MessageFactory.text(f"Reminder! You are expected visit the registration booth of {association} in {minutes} minutes.")
