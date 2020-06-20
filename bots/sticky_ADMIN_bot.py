@@ -24,10 +24,27 @@ class StickyADMINBot(TeamsActivityHandler):
         TurnContext.remove_recipient_mention(turn_context.activity)
         turn_context.activity.text = turn_context.activity.text.strip()
 
+        # Manual user registration functions. To be used when users need to be added after initialization.
+        # These functions are password protected and their existance should only be leaked to those that need it.
+        # In the bot documentation, someone should be pointed to a bot admin if there are problems.
+        
+        # Register a user as an intro user
+        if turn_context.activity.text.startswith("RegisterIntro"):
+            await self.register_intro(turn_context)
+            return
+
+        # Register a user as a mentor
+        if turn_context.activity.text.startswith("RegisterMentor"):
+            await self.register_mentor(turn_context)
+            return
+
+        # Register a user as a committee member
+        if turn_context.activity.text.startswith("RegisterCommitteeMember"):
+            await self.register_committee_member(turn_context)
+            return
+
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         user_full_name = user.given_name + " " + user.surname
-
-        print(user.additional_properties['aadObjectId'])
 
         session = db.Session()
         if not db.getUserOnType(session, 'intro_user', user.id) and user_full_name not in self.CONFIG.MAIN_ADMIN:
@@ -59,21 +76,6 @@ class StickyADMINBot(TeamsActivityHandler):
         # Add a mentor group
         if turn_context.activity.text.startswith("AddMentorGroup"):
             await self.add_mentor_group(turn_context)
-            return
-
-        # Register a user as an intro user
-        if turn_context.activity.text.startswith("RegisterIntro"):
-            await self.register_intro(turn_context)
-            return
-
-        # Register a user as a mentor
-        if turn_context.activity.text.startswith("RegisterMentor"):
-            await self.register_mentor(turn_context)
-            return
-
-        # Register a user as a committee member
-        if turn_context.activity.text.startswith("RegisterCommitteeMember"):
-            await self.register_committee_member(turn_context)
             return
 
         await turn_context.send_activity("I don't know this command. Maybe you made a typo?")
@@ -250,46 +252,31 @@ class StickyADMINBot(TeamsActivityHandler):
 
     # Function to start adding a seperate committee. Expects argument: committee_name
     async def add_committee(self, turn_context: TurnContext):
-        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
-        session = db.Session()
-        #Command can only be done by an intro_user
-        if db.getUserOnType(session, 'intro_user', helper.get_user_id(user)):
-            try:
-                committee_name = turn_context.activity.text.split()[1]
-            except IndexError:
-                await turn_context.send_activity("You need to specify the name for the committee")
-                return
-            channels = await TeamsInfo.get_team_channels(turn_context)
-            # A card is returned to the user that contains all channels as buttons.
-            # A click on the button will send a new command to the bot.
-            card = CardFactory.hero_card(
-                HeroCard(
-                    title="Choose corresponding Committee channel",
-                    text="Choose the channel that the committee belongs to.",
-                    buttons=[
-                        CardAction(
-                            type=ActionTypes.message_back,
-                            title=channel.name,
-                            text=f"RegCommittee {channel.id} {committee_name}"
-                        ) for channel in channels if channel.name is not None
-                    ],
-                ),
-            )
-            await turn_context.send_activity(MessageFactory.attachment(card))
-        else:
-            await turn_context.send_activity("You are not allowed to perform this task! You need to be an Intro Member.")
-        session.close()
+        try:
+            committee_name = turn_context.activity.text.split()[1]
+        except IndexError:
+            await turn_context.send_activity("You need to specify the name for the committee")
+            return
+        channels = await TeamsInfo.get_team_channels(turn_context)
+        # A card is returned to the user that contains all channels as buttons.
+        # A click on the button will send a new command to the bot.
+        card = CardFactory.hero_card(
+            HeroCard(
+                title="Choose corresponding Committee channel",
+                text="Choose the channel that the committee belongs to.",
+                buttons=[
+                    CardAction(
+                        type=ActionTypes.message_back,
+                        title=channel.name,
+                        text=f"RegCommittee {channel.id} {committee_name}"
+                    ) for channel in channels if channel.name is not None
+                ],
+            ),
+        )
+        await turn_context.send_activity(MessageFactory.attachment(card))
 
     # Reacts on the click of the button of the previous function. Saves the committee and links the channel.
     async def register_committee(self, turn_context: TurnContext):
-        # Again, check if the user is an intro user.
-        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
-        session = db.Session()
-        if not db.getUserOnType(session, 'intro_user', helper.get_user_id(user)):
-            await turn_context.send_activity("You do not have the rights to perform this action")
-            session.close()
-            return
-
         # Get the extra info around the command. This includes the channel id and the committee name.
         command_info = turn_context.activity.text.split()
 
@@ -299,10 +286,10 @@ class StickyADMINBot(TeamsActivityHandler):
             channel_id = command_info[1]
         except IndexError:
             await turn_context.send_activity("Something went wrong internally in the bot. Please contact an Intro Member")
-            session.close()
             return
 
         #Save or update the new committee
+        session = db.Session()
         existing_committee = db.getFirst(session, db.Committee, 'name', committee_name)        
         if existing_committee:
             existing_committee.channel_id = channel_id
@@ -315,45 +302,30 @@ class StickyADMINBot(TeamsActivityHandler):
 
     # Function that starts adding a separate mentor group.
     async def add_mentor_group(self, turn_context: TurnContext):
-        # Check if the user if a intro user.
-        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
-        session = db.Session()
-        if db.getUserOnType(session, 'intro_user', helper.get_user_id(user)):
-            try:
-                mentor_group_name = turn_context.activity.text.split()[1]
-            except IndexError:
-                await turn_context.send_activity("You need to specify the name for the mentorgroup")
-                session.close()
-                return
-            channels = await TeamsInfo.get_team_channels(turn_context)
-            # Again send a card with all channels to choose the corresponding one.
-            card = CardFactory.hero_card(
-                HeroCard(
-                    title="Choose corresponding Mentor Group channel",
-                    text="Choose the channel that the mentor group belongs to.",
-                    buttons=[
-                        CardAction(
-                            type=ActionTypes.message_back,
-                            title=channel.name,
-                            text=f'RegMentorGroup {channel.id} {mentor_group_name}'
-                        ) for channel in channels if channel.name is not None
-                    ],
-                ),
-            )
-            await turn_context.send_activity(MessageFactory.attachment(card))
-        else:
-            await turn_context.send_activity("You are not allowed to perform this task! You need to be an Intro Member.")
-        session.close()
+        try:
+            mentor_group_name = turn_context.activity.text.split()[1]
+        except IndexError:
+            await turn_context.send_activity("You need to specify the name for the mentorgroup")
+            return
+        channels = await TeamsInfo.get_team_channels(turn_context)
+        # Again send a card with all channels to choose the corresponding one.
+        card = CardFactory.hero_card(
+            HeroCard(
+                title="Choose corresponding Mentor Group channel",
+                text="Choose the channel that the mentor group belongs to.",
+                buttons=[
+                    CardAction(
+                        type=ActionTypes.message_back,
+                        title=channel.name,
+                        text=f'RegMentorGroup {channel.id} {mentor_group_name}'
+                    ) for channel in channels if channel.name is not None
+                ],
+            ),
+        )
+        await turn_context.send_activity(MessageFactory.attachment(card))
 
     # This function handles the choice of a channel for a mentor group.
     async def register_mentor_group(self, turn_context: TurnContext):
-        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
-        session = db.Session()
-        if not db.getUserOnType(session, 'intro_user', helper.get_user_id(user)):
-            await turn_context.send_activity("You do not have the rights to perform this action")
-            session.close()
-            return
-
         command_info = turn_context.activity.text.split()
 
         try:
@@ -361,7 +333,9 @@ class StickyADMINBot(TeamsActivityHandler):
             channel_id = command_info[1]
         except IndexError:
             await turn_context.send_activity("Something went wrong internally in the bot. Please contact an Intro Member")
+            return
 
+        session = db.Session()
         existing_mentor_group = db.getFirst(session, db.MentorGroup, 'name', mentor_group_name)
         if existing_mentor_group:
             existing_mentor_group.channel_id = channel_id
