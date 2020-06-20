@@ -62,7 +62,7 @@ def getQuestionsFromSet(session, group_id, questionSet):
         question = getFirst(session, Questions, 'opdr', question_nr)
 
         if question_value is 1 and question is not None:
-            return_value.append(question.question)
+            return_value.append(f"{question.opdr}. {question.question}")
 
     return return_value
 
