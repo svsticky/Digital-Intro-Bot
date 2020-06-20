@@ -18,6 +18,7 @@ class StickyADMINBot(TeamsActivityHandler):
         self._app_password = app_password
         self.CONFIG = DefaultConfig()
         self.scheduler = AsyncIOScheduler(timezone=self.CONFIG.TIME_ZONE)
+        self.jobs = [] # Holds channel ids of mentor groups for which a job is already created.
 
     async def on_message_activity(self, turn_context: TurnContext):
         TurnContext.remove_recipient_mention(turn_context.activity)
@@ -166,10 +167,15 @@ class StickyADMINBot(TeamsActivityHandler):
             mentor_group.sticky_timeslot = row[1]
             mentor_group.aes_timeslot = row[2]
             db.dbMerge(session, mentor_group)
-            self.create_job(turn_context, mentor_group.channel_id, row[1], "Sticky")
-            self.create_job(turn_context, mentor_group.channel_id, row[2], "Aeskwadraat")          
-            
-        self.scheduler.start()
+            if mentor_group.channel_id in self.jobs:
+                continue
+            else:
+                self.create_job(turn_context, mentor_group.channel_id, row[1], "Sticky")
+                self.create_job(turn_context, mentor_group.channel_id, row[2], "Aeskwadraat")
+                self.jobs.append(mentor_group.channel_id)
+
+        if not self.scheduler.running:
+            self.scheduler.start()
         await turn_context.send_activity("All timeslots have been obtained.")
     
     async def send_reminder(self, turn_context: TurnContext, minutes, channel_id, association):
