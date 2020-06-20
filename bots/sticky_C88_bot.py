@@ -22,17 +22,19 @@ class StickyC88Bot(TeamsActivityHandler):
         turn_context.activity.text = turn_context.activity.text.strip()
 
         # Based on a given command, the bot performs a function.
-
         # Send a certain set of activities to the given group
         if turn_context.activity.text.startswith("UnlockSet"):
             await self.unlock_set(turn_context)
             return
 
+        # Answer a Crazy 88 question / exercise
         if turn_context.activity.text.startswith("Answer"):
-            pass
+            return
 
+        # Get all questions which still have to be answered
         if turn_context.activity.text.startswith("GetQuestions"):
-            pass
+            await self.get_questions(turn_context)
+            return
 
     async def unlock_set(self, turn_context: TurnContext):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
@@ -76,4 +78,26 @@ class StickyC88Bot(TeamsActivityHandler):
                 await turn_context.send_activity("This question set does not exist")
         else:
             await turn_context.send_activity("You are not allowed to perform this task! You need to be an Intro Member.")
+        session.close()
+
+    async def get_questions(self, turn_context: TurnContext):
+        channel_id = turn_context.activity.channel_data['teamsChannelId']
+        session = db.Session()
+
+        question_states = db.getFirst(session, db.Crazy88Progress, 'mg_id', channel_id)
+        if not question_states:
+            await turn_context.send_activity("This is not a mentor group")
+        else:
+            questions = session.query(db.Questions).all()
+            response_text = ""
+            for n in range(1, 89):
+                if getattr(question_states, f"opdr{n}") == 1:
+                    row = questions[n-1]
+                    response_text += f'{row.opdr}. {row.question}\n'
+
+            if not response_text:
+                await turn_context.send_activity("This mentor group does not have any open questions")
+            else:
+                await turn_context.send_activity(response_text)
+
         session.close()
