@@ -50,16 +50,17 @@ class StickyC88Bot(TeamsActivityHandler):
 
             progress = db.getFirst(session, db.Crazy88Progress, 'mg_id', channel_id)
             try:
-                if not progress:
-                    await turn_context.send_activity("This mentor group does not exist")
-                elif question_set < 1 & question_set > 8:
+                if question_set < 1 & question_set > 8:
                     await turn_context.send_activity("This is not a valid set")
+                elif not progress:
+                    await turn_context.send_activity("This mentor group does not exist")
                 else:                    
-                    # # Unlock all questions for a given set
-                    # # Unlock is still broken, complains about a locked database
-                    # y = 8 * question_set
-                    # for x in range(1, 9):
-                    #     setattr(progress, f"opdr{y+x}", 1)
+                    # Unlock all questions for a given set
+                    y = 8 * (question_set - 1)
+                    for x in range(1, 9):
+                        setattr(progress, f"opdr{y+x}", 1)
+
+                    db.dbMerge(session, progress)
 
                     response_text = f'Congratulations! You now have unlocked question set {question_set}.<br>'
                     
