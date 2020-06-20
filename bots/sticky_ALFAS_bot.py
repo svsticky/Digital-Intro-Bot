@@ -48,6 +48,10 @@ class StickyALFASBot(TeamsActivityHandler):
         if turn_context.activity.text == "Associations":
             await self.association_planning(turn_context)
             return
+        
+        if turn_context.activity.text == "UpdateCard":
+            await self.update_card(turn_context)
+            return
 
         # Get all intro members
         if turn_context.activity.text == "GetIntro":
@@ -79,7 +83,40 @@ class StickyALFASBot(TeamsActivityHandler):
             return
 
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
-        print(user)
+        mentor_db_user = db.getUserOnType(session, 'mentor_user', helper.get_user_id(user))
+        if not mentor_db_user:
+            await turn_context.send_activity("Only a mentor can perform this action")
+            session.close()
+            return
+
+        committees = db.getAll(session, db.Committee, 'occupied', False)
+        print(committees)
+
+        card = CardFactory.hero_card(
+            HeroCard(
+                title="Available Committees",
+                text='Choose the committee that you want to meet next!',
+                buttons=[
+                    CardAction(
+                        type=ActionTypes.message_back,
+                        title=committee.name,
+                        text=f"ChooseCommittee {committee.name}"
+                    ) for committee in committees
+                ] + [CardAction(
+                        type=ActionTypes.message_back,
+                        title="Refresh",
+                        text=f"UpdateCard"
+                    )]
+                )
+            )
+        session.close()
+        choosing_activity = MessageFactory.attachment(card)
+        await turn_context.send_activity(choosing_activity)
+    
+    async def update_card(self, turn_context: TurnContext):
+        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+
+        session = db.Session()
         mentor_db_user = db.getUserOnType(session, 'mentor_user', helper.get_user_id(user))
         if not mentor_db_user:
             await turn_context.send_activity("Only a mentor can perform this action")
@@ -98,12 +135,17 @@ class StickyALFASBot(TeamsActivityHandler):
                         title=committee.name,
                         text=f"ChooseCommittee {committee.name}"
                     ) for committee in committees
-                ],
+                ] + [CardAction(
+                        type=ActionTypes.message_back,
+                        title="Refresh",
+                        text=f"UpdateCard"
+                    )]
+                )
             )
-        )
         session.close()
-        choosing_activity = MessageFactory.attachment(card)
-        await turn_context.send_activity(choosing_activity)
+        updated_card = MessageFactory.attachment(card)
+        updated_card.id = turn_context.activity.reply_to_id
+        await turn_context.update_activity(updated_card)
 
     async def choose_committee(self, turn_context: TurnContext):
         #Get user from teams and database
