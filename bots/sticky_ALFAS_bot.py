@@ -166,11 +166,12 @@ class StickyALFASBot(TeamsActivityHandler):
 
     async def random_committee(self, turn_context: TurnContext):
         #Gets random committee from the database.
+        channel_id = helper.get_channel_id(turn_context.activity)
         session = db.Session()
-        committees = db.getAll(session, db.Committee, 'occupied', False)
+        mentor_group = db.getFirst(session, db.MentorGroup, 'channel_id', channel_id)
+        committees = db.getNonVisitedCommittees(session, mentor_group.mg_id)
         chosen_committee = choice(committees)
-        turn_context.activity.text = f'ChooseCommittee {chosen_committee.name}'
-        await self.choose_committee(turn_context)
+        await self.match_group_with_committee(turn_context, session, chosen_committee, mentor_group)
 
     async def choose_committee(self, turn_context: TurnContext):
         #Get user from teams and database
@@ -186,25 +187,17 @@ class StickyALFASBot(TeamsActivityHandler):
             except IndexError:
                 await turn_context.send_activity("Something went wrong obtaining the chosen committee, please contact the bot owner")
 
+            mentor_group = db.getFirst(session, db.MentorGroup, 'mg_id', db_user.mg_id)
+
+            if mentor_group.occupied:
+                await turn_context.send_activity("You already have a match with a different committee, this should first be disbanded.")
+                session.close()
+                return
+
             committee = db.getFirst(session, db.Committee, 'name', committee_name)
 
             # If committee is not occupied
-            if not committee.occupied:
-                # Immediately set it as occupied, then do the rest (to make it atomic)
-                committee.occupied = True
-                db.dbMerge(session, committee)
-                # Get mentor group and create a visit.
-                mentor_group = db.getFirst(session, db.MentorGroup, 'mg_id', db_user.mg_id)
-                visit = db.Visit(mg_id=mentor_group.mg_id, committee_id=committee.committee_id)
-                db.dbInsert(session, visit)
-                await turn_context.send_activity(f"The members of committee '{committee.name}' will be joining your channel soon!")
-                committee_message = MessageFactory.text(f"You are asked to join the channel of mentor group '{mentor_group.name}'")
-                await helper.create_channel_conversation(turn_context, committee.channel_id, committee_message)
-                enroll_button = await self.create_enrollment_button(committee)
-                await turn_context.send_activity(enroll_button)
-            else:
-                await turn_context.send_activity("This committee is now occupied, please choose another committee to visit.\
-                                                  This is probably happened due to the fact that another group was a bit faster.")
+            await self.match_group_with_committee(turn_context, session, committee, mentor_group)            
         else:
             await turn_context.send_activity(f"You are not a Mentor and thus not allowed to perform this command.")
         session.close()
@@ -236,11 +229,22 @@ class StickyALFASBot(TeamsActivityHandler):
         db_user = db.getUserOnType(session, 'committee_user', helper.get_user_id(user))
 
         if db_user:
+            # Set committee occupied to False
             committee = db.getFirst(session, db.Committee, 'committee_id', db_user.committee_id)
             committee.occupied = False
             db.dbMerge(session, committee)
+            # Get the visit and set it to finished.
+            visit = db.getFirst(session, db.Visit, 'committee_id', committee.committee_id)
+            visit.finished = True
+            db.dbMerge(session, visit)
+            # Set mentor_group occupation to False
+            mentor_group = db.getFirst(session, db.MentorGroup, 'mg_id', visit.mg_id)
+            mentor_group.occupied = False
+            db.dbMerge(session, mentor_group)
             release_message = MessageFactory.text("This committee has now been freed from occupation. Expect a new request soon!")
             await helper.create_channel_conversation(turn_context, committee.channel_id, release_message)
+            release_message = MessageFactory.text("You are now able to request a new Committee to visit.")
+            await helper.create_channel_conversation(turn_context, mentor_group.channel_id, release_message)
         else:
             await turn_context.send_activity("You are not allowed to perform this command.")
         session.close()
@@ -265,7 +269,27 @@ class StickyALFASBot(TeamsActivityHandler):
 
         await turn_context.send_activity("You are expected to arrive at the registration booths at the following times:\n\n"\
                                          f"Sticky: {sticky_time} hours\n\n"\
-                                         f"Aes-kwadraat: {aes_time} hours")      
+                                         f"Aes-kwadraat: {aes_time} hours")
+
+    #Helper functions!
+    async def match_group_with_committee(self, turn_context, session, committee, mentor_group):
+        if not committee.occupied:
+            # Immediately set it as occupied, then do the rest (to make it atomic)
+            committee.occupied = True
+            db.dbMerge(session, committee)
+            # Get mentor group and create a visit.
+            mentor_group.occupied = True
+            db.dbMerge(session, mentor_group)
+            visit = db.Visit(mg_id=mentor_group.mg_id, committee_id=committee.committee_id)
+            db.dbInsert(session, visit)
+            await turn_context.send_activity(f"The members of committee '{committee.name}' will be joining your channel soon!")
+            committee_message = MessageFactory.text(f"You are asked to join the channel of mentor group '{mentor_group.name}'")
+            await helper.create_channel_conversation(turn_context, committee.channel_id, committee_message)
+            enroll_button = await self.create_enrollment_button(committee)
+            await turn_context.send_activity(enroll_button)
+        else:
+            await turn_context.send_activity("This committee is already occupied, please choose another committee to visit.\
+                                                  This is probably happened due to the fact that another group was a bit faster.")
 
     #Example functions!
     async def return_members(self, turn_context: TurnContext):

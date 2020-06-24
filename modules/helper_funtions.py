@@ -36,3 +36,7 @@ async def create_personal_conversation(turn_context: TurnContext, user, message,
 
 def get_user_id(user):
     return user.aad_object_id if user.aad_object_id else user.additional_properties['aadObjectId']
+
+def get_channel_id(activity):
+    return activity.channel_data['teamsChannelId'] if 'teamsChannelId' in activity.channel_data.keys() \
+        else activity.channel_data['channel']['id']

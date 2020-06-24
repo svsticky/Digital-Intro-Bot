@@ -70,6 +70,21 @@ def getQuestionsFromSet(session, group_id, questionSet):
 
     return return_value
 
+def getActiveVisit(session, committee_id):
+    visit = session.query(Visit).filter((Visit.committee_id == committee_id) & (Visit.finished == False)).first()
+    return visit
+
+def getNonVisitedCommittees(session, mg_id):
+    visits = session.query(Visit).filter((Visit.mg_id == mg_id) & (Visit.finished == True))
+    committees = getAll(session, Committee, 'occupied', False)
+    return_value = []
+
+    for committee in committees:
+        if next(filter(lambda visit: visit.committee_id == committee.committee_id, visits), None):
+            continue
+        return_value.append(committee)
+    return return_value
+
 #TODO: build database tables
 
 class User(SQLAlchemyBase):
@@ -138,8 +153,9 @@ class MentorGroup(SQLAlchemyBase):
 class Visit(SQLAlchemyBase):
     __tablename__ = 'visit'
     visit_id = sa.Column(sa.Integer, primary_key=True)
-    mg_id = sa.Column(sa.String(50), index=True)
-    committee_id = sa.Column(sa.String(50))
+    mg_id = sa.Column(sa.String(50))
+    committee_id = sa.Column(sa.String(50), index=True)
+    finished = sa.Column(sa.Boolean, default=False)
 
 class Enrollment(SQLAlchemyBase):
     __tablename__ = 'enrollment'
