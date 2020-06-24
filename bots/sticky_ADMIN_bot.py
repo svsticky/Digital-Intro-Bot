@@ -178,7 +178,7 @@ class StickyADMINBot(TeamsActivityHandler):
             if matching_member is None:
                 continue
             database_member = None
-            print(matching_member)
+
             # Get from the database what member the member needs to become and save it as the right user.
             if row[3] == "Intro":
                 user = db.getUserOnType(session, 'intro_user', helper.get_user_id(matching_member))
