@@ -104,14 +104,14 @@ class StickyALFASBot(TeamsActivityHandler):
                     ) for committee in committees
                 ] + [CardAction(
                         type=ActionTypes.message_back,
-                        title="Refresh",
+                        title="\u27F3",
                         text=f"UpdateCard"
                     )]
                 )
             )
         session.close()
         choosing_activity = MessageFactory.attachment(card)
-        await turn_context.send_activity(choosing_activity)
+        await helper.create_channel_conversation(turn_context, channel_id, choosing_activity)
     
     async def update_card(self, turn_context: TurnContext):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
@@ -137,7 +137,7 @@ class StickyALFASBot(TeamsActivityHandler):
                     ) for committee in committees
                 ] + [CardAction(
                         type=ActionTypes.message_back,
-                        title="Refresh",
+                        title="\u27F3",
                         text=f"UpdateCard"
                     )]
                 )
