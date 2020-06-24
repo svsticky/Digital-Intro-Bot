@@ -169,6 +169,7 @@ class StickyADMINBot(TeamsActivityHandler):
 
     async def init_members(self, turn_context: TurnContext, session):
         # Starting with adding members. Members are retrieved from a private google sheet.
+        await turn_context.send_activity("Starting initialization of bot members...")
         sheet_values = GoogleSheet().get_members()
         # Get members from teams
         members = await TeamsInfo.get_members(turn_context)
@@ -213,6 +214,8 @@ class StickyADMINBot(TeamsActivityHandler):
             # Insert if a database_member is created (this is not the case if the user already exists in the database).
             if database_member is not None:
                 db.dbInsert(session, database_member)
+        
+        await turn_context.send_activity("Done initializing bot members.")
 
     async def init_timeslots(self, turn_context: TurnContext, session):
         # Obtain timeslots sheet

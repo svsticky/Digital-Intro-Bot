@@ -1,6 +1,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
-
+from random import seed
+from random import choice
 from botbuilder.core import CardFactory, TurnContext, MessageFactory
 from botbuilder.core.teams import TeamsActivityHandler, TeamsInfo
 from botbuilder.schema import CardAction, HeroCard, Mention, ConversationParameters
@@ -15,6 +16,7 @@ class StickyALFASBot(TeamsActivityHandler):
         self._app_id = app_id
         self._app_password = app_password
         self.CONFIG = DefaultConfig()
+        seed(1230948385) # Does it really matter :P?
 
     async def on_message_activity(self, turn_context: TurnContext):
         """
@@ -34,6 +36,10 @@ class StickyALFASBot(TeamsActivityHandler):
         # Choose a committee for a mentor group to visit.
         if turn_context.activity.text.startswith("ChooseCommittee"):
             await self.choose_committee(turn_context)
+            return
+        
+        if turn_context.activity.text == "RandomCommittee":
+            await self.random_committee(turn_context)
             return
 
         # When someone enrolls for a certain committee
@@ -90,23 +96,28 @@ class StickyALFASBot(TeamsActivityHandler):
             return
 
         committees = db.getAll(session, db.Committee, 'occupied', False)
-        print(committees)
 
         card = CardFactory.hero_card(
             HeroCard(
                 title="Available Committees",
-                text='Choose the committee that you want to meet next!',
+                text='Choose the committee that you want to meet next! You can either pick a committee or let the bot choose one at random. \
+                      Click refresh to refresh the list',
                 buttons=[
                     CardAction(
                         type=ActionTypes.message_back,
+                        title="\u27F3 Refresh",
+                        text=f"UpdateCard"
+                    ),
+                    CardAction(
+                        type=ActionTypes.message_back,
+                        title="\u2753 Random",
+                        text=f"RandomCommittee"
+                    )] +
+                    [CardAction(
+                        type=ActionTypes.message_back,
                         title=committee.name,
                         text=f"ChooseCommittee {committee.name}"
-                    ) for committee in committees
-                ] + [CardAction(
-                        type=ActionTypes.message_back,
-                        title="\u27F3",
-                        text=f"UpdateCard"
-                    )]
+                    ) for committee in committees]
                 )
             )
         session.close()
@@ -128,24 +139,38 @@ class StickyALFASBot(TeamsActivityHandler):
         card = CardFactory.hero_card(
             HeroCard(
                 title="Available Committees",
-                text='Choose the committee that you want to meet next!',
+                text="Choose the committee that you want to meet next! You can either pick a committee or let the bot choose one at random. \
+                      Click 'Refresh' to refresh the list",
                 buttons=[
                     CardAction(
                         type=ActionTypes.message_back,
+                        title="\u27F3 Refresh",
+                        text=f"UpdateCard"
+                    ),
+                    CardAction(
+                        type=ActionTypes.message_back,
+                        title="\u2753 Random",
+                        text=f"RandomCommittee"
+                    )] +
+                    [CardAction(
+                        type=ActionTypes.message_back,
                         title=committee.name,
                         text=f"ChooseCommittee {committee.name}"
-                    ) for committee in committees
-                ] + [CardAction(
-                        type=ActionTypes.message_back,
-                        title="\u27F3",
-                        text=f"UpdateCard"
-                    )]
+                    ) for committee in committees]
                 )
             )
         session.close()
         updated_card = MessageFactory.attachment(card)
         updated_card.id = turn_context.activity.reply_to_id
         await turn_context.update_activity(updated_card)
+
+    async def random_committee(self, turn_context: TurnContext):
+        #Gets random committee from the database.
+        session = db.Session()
+        committees = db.getAll(session, db.Committee, 'occupied', False)
+        chosen_committee = choice(committees)
+        turn_context.activity.text = f'ChooseCommittee {chosen_committee.name}'
+        await self.choose_committee(turn_context)
 
     async def choose_committee(self, turn_context: TurnContext):
         #Get user from teams and database
@@ -178,7 +203,8 @@ class StickyALFASBot(TeamsActivityHandler):
                 enroll_button = await self.create_enrollment_button(committee)
                 await turn_context.send_activity(enroll_button)
             else:
-                await turn_context.send_activity("This committee is now occupied, please choose another committee to visit.")
+                await turn_context.send_activity("This committee is now occupied, please choose another committee to visit.\
+                                                  This is probably happened due to the fact that another group was a bit faster.")
         else:
             await turn_context.send_activity(f"You are not a Mentor and thus not allowed to perform this command.")
         session.close()
