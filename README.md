@@ -25,11 +25,15 @@ This way of registering your bot assumes that you do not have an active Azure su
 ## Tunneling
 As noted earlier, the bot framework of microsoft only accepts https endpoints for safety. This can be a bummer if you do not have any certificates at the ready during testing or just when running it locally. This, we can fix.
 - Install ngrok: `sudo snap install ngrok`
-- Once installed, run: `ngrok http -host-header=rewrite 3978`
-- This will open a window inside your terminal that shows a https link. This link tunnels towards where your bot will be running on your computer.
+- Once installed, run: `ngrok http -subdomain=<YOUR_SUBDOMAIN> -region=<eu, us> -host-header=rewrite 3978`
+- For sticky, the subdomain can be found by logging in to ngrok's website using the credentials in bitwarden.
+- This command opens a window inside your terminal that shows the https link for your tunnel. This link tunnels towards where your bot will be running on your computer.
 - Copy this link and go to your bot's settings on [this website](dev.botframework.com/bots).
 - Paste the link in your endpoint and add the specific endpoint (something like `api/alfas/messages`).
 - Now, when you open a new terminal and run your bot, It should listen to commands from teams.
+
+
+It is also possible to run the ngrok command without `-subdomain` and `-region`. This will create a domain using a binary string that changes everytime you re-issue the command. To be able to create your own subdomains, you need a paid plan for ngrok.
 
 ## Teams Installation.
 To install the bot as an app in Teams, we need the manifest files in `./appmanifest`.
