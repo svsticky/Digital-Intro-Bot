@@ -1,7 +1,11 @@
 import sqlalchemy as sa
+import os
 from sqlalchemy import event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, with_polymorphic
+
+if not os.path.exists('data'):
+    os.makedirs('data/')
 
 database = "sqlite:///data/database.sqlite"
 
