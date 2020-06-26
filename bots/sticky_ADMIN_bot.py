@@ -42,6 +42,10 @@ class StickyADMINBot(TeamsActivityHandler):
         if turn_context.activity.text.startswith("RegisterCommitteeMember"):
             await self.register_committee_member(turn_context)
             return
+        
+        if turn_context.activity.text == "UserInfo":
+            await self.user_info(turn_context)
+            return
 
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         user_full_name = user.given_name + " " + user.surname
@@ -432,6 +436,32 @@ class StickyADMINBot(TeamsActivityHandler):
             session.close()
         else:
             await turn_context.send_activity('Wrong password!')
+
+    async def user_info(self, turn_context: TurnContext):
+        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+
+        session = db.Session()
+        users = db.getAll(session, db.User, 'user_teams_id', helper.get_user_id(user))
+
+        if not users:
+            await turn_context.send_activity("You are not registered as a special user to the bot")
+            session.close()
+            return
+        
+        return_string = "You are known to the bot as follows:   \n"
+        for user in users:
+            if user.user_type == "intro_user":
+                return_string += f'- Introduction committee member   \n'
+            elif user.user_type == "mentor_user":
+                mentor_user = db.getUserOnType(session, 'mentor_user', user.user_teams_id)
+                mentor_group = db.getFirst(session, db.MentorGroup, 'mg_id', mentor_user.mg_id)
+                return_string += f'- Mentor for group {mentor_group.name}   \n'
+            elif user.user_type == "committee_user":
+                committee_user = db.getUserOnType(session, 'committee_user', user.user_teams_id)
+                committee = db.getFirst(session, db.Committee, 'committee_id', committee_user.committee_id)
+                return_string += f'- Committee member for {committee.name}   \n'
+        session.close()
+        await turn_context.send_activity(return_string)
     
     ### Local helper methods!!!
 
