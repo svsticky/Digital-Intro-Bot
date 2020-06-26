@@ -1,6 +1,7 @@
 import sys
 import traceback
 import uuid
+import os
 from datetime import datetime
 from http import HTTPStatus
 
@@ -33,6 +34,8 @@ UITHOF_ADAPTER = BotFrameworkAdapter(UITHOF_SETTINGS)
 ADMIN_SETTINGS = BotFrameworkAdapterSettings(CONFIG.ADMIN_APP_ID, CONFIG.ADMIN_APP_PASSWORD)
 ADMIN_ADAPTER = BotFrameworkAdapter(ADMIN_SETTINGS)
 
+if not os.path.exists('data'):
+    os.makedirs('data/')
 
 # Catch-all for errors.
 async def on_error(context: TurnContext, error: Exception):
