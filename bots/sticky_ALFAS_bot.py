@@ -164,12 +164,25 @@ class StickyALFASBot(TeamsActivityHandler):
         updated_card.id = turn_context.activity.reply_to_id
         await turn_context.update_activity(updated_card)
 
+    #Should only be reached from clicking on the card button.
     async def random_committee(self, turn_context: TurnContext):
         #Gets random committee from the database.
         channel_id = helper.get_channel_id(turn_context.activity)
         session = db.Session()
         mentor_group = db.getFirst(session, db.MentorGroup, 'channel_id', channel_id)
+
+        if not mentor_group:
+            await turn_context.send_activity("This mentor group does not exist for the bot. Register it first!")
+            session.close()
+            return
+            
         committees = db.getNonVisitedCommittees(session, mentor_group.mg_id)
+
+        if not committees:
+            await turn_context.send_activity("All committees are occupied at this moment. Try again later!")
+            session.close()
+            return
+
         chosen_committee = choice(committees)
         await self.match_group_with_committee(turn_context, session, chosen_committee, mentor_group)
 
