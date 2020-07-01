@@ -4,6 +4,8 @@ import datetime
 from botbuilder.core import CardFactory, TurnContext, MessageFactory
 from botbuilder.core.teams import TeamsActivityHandler, TeamsInfo
 from botbuilder.schema import CardAction, HeroCard, Mention, ConversationParameters
+from botbuilder.schema.teams import TeamsChannelAccount
+from typing import List
 from botbuilder.schema._connector_client_enums import ActionTypes
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import modules.database as db
@@ -20,6 +22,16 @@ class StickyADMINBot(TeamsActivityHandler):
         self.scheduler = AsyncIOScheduler(timezone=self.CONFIG.TIME_ZONE)
         self.jobs = [] # Holds channel ids of mentor groups for which a job is already created.
 
+    async def on_teams_members_added(self, teams_members_added: [TeamsChannelAccount],
+        team_info: TeamsInfo, turn_context: TurnContext
+    ):
+        message = "Welcome message here..."
+        print("Now in members added")
+        for member in teams_members_added:
+            print("a message has been sent!")
+            await helper.create_personal_conversation(turn_context, member, message, self._app_id)
+        return
+
     async def on_message_activity(self, turn_context: TurnContext):
         TurnContext.remove_recipient_mention(turn_context.activity)
         turn_context.activity.text = turn_context.activity.text.strip()
@@ -27,7 +39,7 @@ class StickyADMINBot(TeamsActivityHandler):
         # Manual user registration functions. To be used when users need to be added after initialization.
         # These functions are password protected and their existance should only be leaked to those that need it.
         # In the bot documentation, someone should be pointed to a bot admin if there are problems.
-        
+
         # Register a user as an intro user
         if turn_context.activity.text.startswith("RegisterIntro"):
             await self.register_intro(turn_context)
