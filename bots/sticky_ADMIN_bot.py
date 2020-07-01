@@ -191,7 +191,7 @@ class StickyADMINBot(TeamsActivityHandler):
                     database_member = db.IntroUser(user_teams_id=helper.get_user_id(matching_member),
                                                    user_name=matching_member.name)
             elif row[3] == "Mentor":
-                user = db.getUserOnType(session, 'mentor_user', matching_member.id)
+                user = db.getUserOnType(session, 'mentor_user', helper.get_user_id(matching_member))
                 if not user:
                     mentor_group = db.getFirst(session, db.MentorGroup, 'name', row[4])
                     if mentor_group:
