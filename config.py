@@ -33,4 +33,6 @@ class DefaultConfig:
 
     MAIN_ADMIN = ["Niels Kwadijk", "Joris de Jong", "Merijn Stiekema"]
 
+    ASSOCIATIONS = ["Sticky", "Aeskwadraat"]
+
     TIME_ZONE = os.getenv("TimeZone")

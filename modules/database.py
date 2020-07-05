@@ -3,6 +3,7 @@ import os
 from sqlalchemy import event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, with_polymorphic
+from config import DefaultConfig
 
 if not os.path.exists('data'):
     os.makedirs('data/')
@@ -12,6 +13,7 @@ database = "sqlite:///data/database.sqlite"
 SQLAlchemyBase = declarative_base()
 engine = sa.create_engine(database, echo=False)
 Session = sessionmaker(bind=engine)
+_config = DefaultConfig()
 
 #TODO: build database management functions to be called from elsewhere
 # To be able to use these functions, you need to create a new session.
@@ -146,8 +148,10 @@ class MentorGroup(SQLAlchemyBase):
     channel_id = sa.Column(sa.String(50), index=True)
     parents = relationship("MentorUser")
     occupied = sa.Column(sa.Boolean, default=False)
-    sticky_timeslot = sa.Column(sa.String(50))
-    aes_timeslot = sa.Column(sa.String(50))
+
+    # Creates timeslot for all participating associations.
+    for association in _config.ASSOCIATIONS:
+        exec(f'{association}_timeslot = sa.Column(sa.String(50))')
 
 
 class Visit(SQLAlchemyBase):
