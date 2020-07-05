@@ -236,14 +236,14 @@ class StickyADMINBot(TeamsActivityHandler):
 
         for row in sheet_values[1:]:
             mentor_group = db.getFirst(session, db.MentorGroup, 'name', row[0])
-            mentor_group.sticky_timeslot = row[1]
-            mentor_group.aes_timeslot = row[2]
+            for idx, association in enumerate(self.CONFIG.ASSOCIATIONS):
+                setattr(mentor_group, f'{association}_timeslot', row[idx+1])
             db.dbMerge(session, mentor_group)
             if mentor_group.channel_id in self.jobs:
                 continue
             else:
-                self.create_job(turn_context, mentor_group.channel_id, row[1], "Sticky")
-                self.create_job(turn_context, mentor_group.channel_id, row[2], "Aeskwadraat")
+                for idx, association in enumerate(self.CONFIG.ASSOCIATIONS):
+                    self.create_job(turn_context, mentor_group.channel_id, row[idx+1], association)
                 self.jobs.append(mentor_group.channel_id)
 
         if not self.scheduler.running:
