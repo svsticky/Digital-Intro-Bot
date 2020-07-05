@@ -10,7 +10,7 @@ from config import DefaultConfig
 class GoogleSheet:
     def __init__(self):
         self.config = DefaultConfig()
-        SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+        SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
         creds = None
         # The file token.pickle stores the user's access and refresh tokens, and is
@@ -53,3 +53,13 @@ class GoogleSheet:
                                     range=self.config.CRAZY88_QUESTION_RANGE).execute()
         values = result.get('values', [])
         return values
+    
+    def save_enrollments(self, enrollments):
+        body = {
+            'values': enrollments
+        }
+        sheet = self.service.spreadsheets()
+        result = sheet.values().update(spreadsheetId=self.config.ALFAS_INFOSHEET_ID,
+                                       range=self.config.ALFAS_ENROLLMENTS_RANGE,
+                                       valueInputOption='RAW', body=body).execute()
+        #print('{0} cells updated.'.format(result.get('updatedCells')))

@@ -9,6 +9,7 @@ from botbuilder.schema._connector_client_enums import ActionTypes
 import modules.database as db
 import modules.helper_funtions as helper
 from config import DefaultConfig
+from google_api import GoogleSheet
 
 
 class StickyALFASBot(TeamsActivityHandler):
@@ -67,6 +68,11 @@ class StickyALFASBot(TeamsActivityHandler):
         # Get all intro members
         if turn_context.activity.text == "GetIntro":
             await self.get_intro(turn_context)
+            return
+        
+        # Save enrollments to google sheet
+        if turn_context.activity.text == "SaveEnrollments":
+            await self.save_enrollments(turn_context)
             return
 
         #TODO: what to send if it is not a command?
@@ -288,6 +294,42 @@ class StickyALFASBot(TeamsActivityHandler):
         await turn_context.send_activity("You are expected to arrive at the registration booths at the following times:\n\n"\
                                          f"Sticky: {sticky_time} hours\n\n"\
                                          f"Aes-kwadraat: {aes_time} hours")
+
+    async def save_enrollments(self, turn_context: TurnContext):
+        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+        session = db.Session()
+        db_user = db.getUserOnType(session, 'intro_user', helper.get_user_id(user))
+
+        if not db_user:
+            await turn_context.send_activity("You are not allowed to use this command!")
+            session.close()
+            return
+        
+        sorted_enrollments = {}
+
+        enrollments = db.getTable(session, db.Enrollment)
+        # Build dictionary from database
+        for enrollment in enrollments:
+            committee = db.getFirst(session, db.Committee, 'committee_id', enrollment.committee_id)
+            if committee.name in sorted_enrollments:
+                sorted_enrollments[committee.name].append(enrollment)
+            else:
+                sorted_enrollments[committee.name] = [enrollment]
+        
+        google_values = [
+            ['Voornaam', 'Achternaam', 'UU-mail'],
+            ["", "", ""]
+        ]
+        # Build googlesheets datastructure
+        for committee in sorted_enrollments.keys():
+            google_values.append([committee, "", ""])
+            enrollments = sorted_enrollments[committee]
+            for enrollment in enrollments:
+                google_values.append([enrollment.first_name, enrollment.last_name, enrollment.email_address])
+            google_values.append(["", "", ""])
+
+        GoogleSheet().save_enrollments(google_values)
+        await turn_context.send_activity("Enrollments saved!")
 
     #Helper functions!
     async def match_group_with_committee(self, turn_context, session, committee, mentor_group):

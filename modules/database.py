@@ -27,6 +27,10 @@ def getAll(session, table, column, value):
     return_value = session.query(table).filter_by(**{column: value}).all()
     return return_value
 
+def getTable(session, table):
+    return_value = session.query(table).all()
+    return return_value
+
 def dbInsert(session, db_object):
     """Inserts object"""
     if(db_object):

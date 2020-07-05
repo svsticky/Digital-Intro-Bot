@@ -29,6 +29,7 @@ class DefaultConfig:
     ALFAS_INFOSHEET_ID = os.getenv("ALFASInfoSheetId")
     ALFAS_MEMBERS_RANGE = os.getenv("ALFASMemberRange")
     ALFAS_TIMESLOTS_RANGE = os.getenv("ALFASTimeslotsRange")
+    ALFAS_ENROLLMENTS_RANGE = os.getenv("ALFASEnrollmentsRange")
     CRAZY88_QUESTION_RANGE = os.getenv("Crazy88QuestionRage")
 
     MAIN_ADMIN = ["Niels Kwadijk", "Joris de Jong", "Merijn Stiekema"]
