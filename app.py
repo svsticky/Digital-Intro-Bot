@@ -46,12 +46,18 @@ async def on_error(context: TurnContext, error: Exception):
         await context.send_activity(trace_activity)
 
 CONFIG = DefaultConfig()
-BOTS = ['ALFAS', 'C88', 'UITHOF']
+BOTS = BOTS_CHECK = ['ALFAS', 'C88', 'UITHOF']
 
 if sys.argv[1:]:
     BOTS = sys.argv[1:]
-
-print(BOTS)
+    # Sanitation for args
+    for i, _ in enumerate(BOTS):
+        BOTS[i] = BOTS[i].upper()
+        if BOTS[i] not in BOTS_CHECK:
+            print("Wrong arguments. Arguments must only be the name of the bots you want to start. \n\n" \
+                "Example: app.py ALFAS C88.\n\nWhen you use all the bots, no bots have to be specified.\n"
+                f'The current bots you can choose are: {BOTS_CHECK}')
+            sys.exit(1)
 
 ALFAS_BOT = C88_BOT = UITHOF_BOT = None
 for bot in BOTS:
@@ -70,11 +76,6 @@ ADMIN_BOT = StickyADMINBot(CONFIG.ADMIN_APP_ID, CONFIG.ADMIN_APP_PASSWORD,
                            ALFAS_BOT if ALFAS_BOT else None,
                            C88_BOT if C88_BOT else None,
                            UITHOF_BOT if UITHOF_BOT else None)
-
-print(ADMIN_BOT)
-print(ALFAS_BOT)
-print(C88_BOT)
-print(UITHOF_BOT)
 
 APP = web.Application(middlewares=[aiohttp_error_middleware])
 
