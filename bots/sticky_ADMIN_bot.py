@@ -55,7 +55,10 @@ class StickyADMINBot(TeamsActivityHandler):
 
         # Register a user as a committee member
         if turn_context.activity.text.startswith("RegisterCommitteeMember"):
-            await self.register_committee_member(turn_context)
+            if self.alfas_bot:
+                await self.register_committee_member(turn_context)
+            else:
+                await turn_context.send_activity("This command is disabled because the corresponding bot has not been launched.")
             return
         
         if turn_context.activity.text == "UserInfo":
@@ -77,14 +80,20 @@ class StickyADMINBot(TeamsActivityHandler):
             await self.initialize(turn_context)
             return
         
-        # Add a committee
+        # Add a committee        
         if turn_context.activity.text.startswith("AddCommittee"):
-            await self.add_committee(turn_context)
+            if self.alfas_bot:
+                await self.add_committee(turn_context)
+            else:
+                await turn_context.send_activity("This command is disabled because the corresponding bot has not been launched.")
             return
 
         # Follow-up registering of a committee
         if turn_context.activity.text.startswith("RegCommittee"):
-            await self.register_committee(turn_context)
+            if self.alfas_bot:
+                await self.register_committee(turn_context)
+            else:
+                await turn_context.send_activity("This command is disabled because the corresponding bot has not been launched.")
             return
 
         # Follow-up registering of a mentor group
@@ -118,10 +127,12 @@ class StickyADMINBot(TeamsActivityHandler):
         await self.init_members(turn_context, session)
 
         # Init timeslots
-        await self.init_timeslots(turn_context, session)
+        if self.alfas_bot: # only needs to be done when the alfas bot is launched.
+            await self.init_timeslots(turn_context, session)
 
         # Fetch questions for crazy 88
-        await self.fetch_crazy88_questions(turn_context, session)
+        if self.c88_bot: # only needs to be done when de c88 bot is launched.
+            await self.fetch_crazy88_questions(turn_context, session)
 
         session.close()
         #Feedback to user.
@@ -153,13 +164,15 @@ class StickyADMINBot(TeamsActivityHandler):
                     mentor_group = db.MentorGroup(name=group_name, channel_id=channel.id)
                     db.dbInsert(session, mentor_group)
                     # Create crazy 88 progress for this group
-                    crazy88_group = db.Crazy88Progress(mg_id=channel.id)
-                    db.dbInsert(session, crazy88_group)
+                    if self.c88_bot: # if the c88_bot is launched
+                        crazy88_group = db.Crazy88Progress(mg_id=channel.id)
+                        db.dbInsert(session, crazy88_group)
                 else:
                     # Update Crazy88 progress
-                    existing_c88_progress = db.getFirst(session, db.Crazy88Progress, 'mg_id', existing_mentor_group.channel_id)
-                    existing_c88_progress.mg_id = channel.id
-                    db.dbMerge(session, existing_c88_progress)
+                    if self.c88_bot: # if the c88_bot is launched
+                        existing_c88_progress = db.getFirst(session, db.Crazy88Progress, 'mg_id', existing_mentor_group.channel_id)
+                        existing_c88_progress.mg_id = channel.id
+                        db.dbMerge(session, existing_c88_progress)
                     # Update mentor group data
                     existing_mentor_group.channel_id = channel.id
                     existing_mentor_group.name = group_name
@@ -170,22 +183,23 @@ class StickyADMINBot(TeamsActivityHandler):
                 added_groups += f'{group_name}, '
 
             #Check if it is a "Commissie" channel
-            if channel.name.startswith("Commissie"):
-                #If so, add it to the database as a Commissie or update it.
-                committee_name = channel.name.split()[1]
-                existing_committee = db.getFirst(session, db.Committee, 'name', committee_name)
+            if self.alfas_bot: # If the alfas bot is launched
+                if channel.name.startswith("Commissie"):
+                    #If so, add it to the database as a Commissie or update it.
+                    committee_name = channel.name.split()[1]
+                    existing_committee = db.getFirst(session, db.Committee, 'name', committee_name)
 
-                if not existing_committee:
-                    committee = db.Committee(name=committee_name, info="", channel_id=channel.id)
-                    db.dbInsert(session, committee)
-                else:
-                    existing_committee.channel_id = channel.id
-                    existing_committee.name = committee_name
-                    db.dbMerge(session, existing_committee)
-                # Notify the channel that it is now an ALFAS channel
-                init_message = MessageFactory.text(f"This channel is now the main ALFAS channel for Committee '{committee_name}'")
-                await helper.create_channel_conversation(turn_context, channel.id, init_message)
-                added_groups += f'{committee_name}, '
+                    if not existing_committee:
+                        committee = db.Committee(name=committee_name, info="", channel_id=channel.id)
+                        db.dbInsert(session, committee)
+                    else:
+                        existing_committee.channel_id = channel.id
+                        existing_committee.name = committee_name
+                        db.dbMerge(session, existing_committee)
+                    # Notify the channel that it is now an ALFAS channel
+                    init_message = MessageFactory.text(f"This channel is now the main ALFAS channel for Committee '{committee_name}'")
+                    await helper.create_channel_conversation(turn_context, channel.id, init_message)
+                    added_groups += f'{committee_name}, '
         # Done with the channels
         await turn_context.send_activity(f"The following groups have been added: {added_groups}")
         await turn_context.send_activity("All committees and mentor groups have been added.")
@@ -223,16 +237,17 @@ class StickyADMINBot(TeamsActivityHandler):
                                                         mg_id=mentor_group.mg_id)
                     else:
                         await turn_context.send_activity(f"Mentor group for '{matching_member.name} does not exist!")
-            elif row[3] == "Commissie":
-                user = db.getUserOnType(session, 'committee_user', helper.get_user_id(matching_member))
-                if not user:
-                    committee = db.getFirst(session, db.Committee, 'name', row[4])
-                    if committee:
-                        database_member = db.CommitteeUser(user_teams_id=helper.get_user_id(matching_member),
-                                                           user_name=matching_member.name,
-                                                           committee_id=committee.committee_id)
-                    else:
-                        await turn_context.send_activity(f"Committee for '{matching_member.name}' does not exist!")
+            if self.alfas_bot: # These are only added when the alfas bot is launched.
+                elif row[3] == "Commissie":
+                    user = db.getUserOnType(session, 'committee_user', helper.get_user_id(matching_member))
+                    if not user:
+                        committee = db.getFirst(session, db.Committee, 'name', row[4])
+                        if committee:
+                            database_member = db.CommitteeUser(user_teams_id=helper.get_user_id(matching_member),
+                                                            user_name=matching_member.name,
+                                                            committee_id=committee.committee_id)
+                        else:
+                            await turn_context.send_activity(f"Committee for '{matching_member.name}' does not exist!")
 
             # Insert if a database_member is created (this is not the case if the user already exists in the database).
             if database_member is not None:
@@ -496,14 +511,14 @@ class StickyADMINBot(TeamsActivityHandler):
         except IndexError:
             await turn_context.send_activity("You need to specify the bot you want to unlock by specifying 'alfas', 'c88' or 'uithof'")
         
-        if bot == 'alfas':
+        if bot == 'alfas' and self.alfas_bot:
             self.alfas_bot.unlocked = True
-        elif bot == 'c88':
+        elif bot == 'c88' and self.c88_bot:
             self.c88_bot.unlocked = True
-        elif bot == 'uithof':
+        elif bot == 'uithof' and self.uithof_bot:
             self.uithof_bot.unlocked = True
         else:
-            await turn_context.send_activity("This bot is not known by the ADMIN bot")
+            await turn_context.send_activity("This bot is not known by the ADMIN bot or has not been launched")
             return
         
         await turn_context.send_activity("The bot has been succesfully unlocked!")
@@ -515,14 +530,14 @@ class StickyADMINBot(TeamsActivityHandler):
         except IndexError:
             await turn_context.send_activity("You need to specify the bot you want to lock by specifying 'alfas', 'c88' or 'uithof'")
         
-        if bot == 'alfas':
+        if bot == 'alfas' and self.alfas_bot:
             self.alfas_bot.unlocked = False
-        elif bot == 'c88':
+        elif bot == 'c88' and self.c88_bot:
             self.c88_bot.unlocked = False
-        elif bot == 'uithof':
+        elif bot == 'uithof' and self.uithof_bot:
             self.uithof_bot.unlocked = False
         else:
-            await turn_context.send_activity("This bot is not known by the ADMIN bot")
+            await turn_context.send_activity("This bot is not known by the ADMIN bot or has not been launched")
             return
         
         await turn_context.send_activity("The bot has been succesfully locked!")

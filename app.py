@@ -56,9 +56,11 @@ if sys.argv[1:]:
         if BOTS[i] not in BOTS_CHECK:
             print("Wrong arguments. Arguments must only be the name of the bots you want to start. \n\n" \
                 "Example: app.py ALFAS C88.\n\nWhen you use all the bots, no bots have to be specified.\n"
-                f'The current bots you can choose are: {BOTS_CHECK}')
+                f'The current bots you can choose are: {BOTS_CHECK}\n'\
+                "When no arguments are given, all bots are launched.")
             sys.exit(1)
 
+# Very much python, very much magickery
 ALFAS_BOT = C88_BOT = UITHOF_BOT = None
 for bot in BOTS:
     locals()[bot + "_SETTINGS"] = BotFrameworkAdapterSettings(eval(f'CONFIG.{bot}_APP_ID'), eval(f'CONFIG.{bot}_APP_PASSWORD'))
