@@ -15,12 +15,15 @@ from google_api import GoogleSheet
 
 
 class StickyADMINBot(TeamsActivityHandler):
-    def __init__(self, app_id: str, app_password: str):
+    def __init__(self, app_id: str, app_password: str, alfas, c88, uithof):
         self._app_id = app_id
         self._app_password = app_password
         self.CONFIG = DefaultConfig()
         self.scheduler = AsyncIOScheduler(timezone=self.CONFIG.TIME_ZONE)
         self.jobs = [] # Holds channel ids of mentor groups for which a job is already created.
+        self.alfas_bot = alfas # alfas bot object
+        self.c88_bot = c88 # c88 bot object
+        self.uithof_bot = uithof # uithof bot object
 
     async def on_teams_members_added(self, teams_members_added: [TeamsChannelAccount],
         team_info: TeamsInfo, turn_context: TurnContext
@@ -92,6 +95,14 @@ class StickyADMINBot(TeamsActivityHandler):
         # Add a mentor group
         if turn_context.activity.text.startswith("AddMentorGroup"):
             await self.add_mentor_group(turn_context)
+            return
+        
+        if turn_context.activity.text.startswith("Unlock"): #followed by one of ['alfas', 'c88', 'uithof']
+            await self.unlock_bot(turn_context)
+            return
+
+        if turn_context.activity.text.startswith("Lock"): #followed by one of ['alfas', 'c88', 'uithof']
+            await self.lock_bot(turn_context)
             return
 
         await turn_context.send_activity("I don't know this command. Maybe you made a typo?")
@@ -477,6 +488,44 @@ class StickyADMINBot(TeamsActivityHandler):
                 return_string += f'- Committee member for {committee.name}   \n'
         session.close()
         await turn_context.send_activity(return_string)
+
+    async def unlock_bot(self, turn_context: TurnContext):
+
+        try:
+            bot = turn_context.activity.text.split()[1]
+        except IndexError:
+            await turn_context.send_activity("You need to specify the bot you want to unlock by specifying 'alfas', 'c88' or 'uithof'")
+        
+        if bot == 'alfas':
+            self.alfas_bot.unlocked = True
+        elif bot == 'c88':
+            self.c88_bot.unlocked = True
+        elif bot == 'uithof':
+            self.uithof_bot.unlocked = True
+        else:
+            await turn_context.send_activity("This bot is not known by the ADMIN bot")
+            return
+        
+        await turn_context.send_activity("The bot has been succesfully unlocked!")
+
+    async def lock_bot(self, turn_context: TurnContext):
+
+        try:
+            bot = turn_context.activity.text.split()[1]
+        except IndexError:
+            await turn_context.send_activity("You need to specify the bot you want to lock by specifying 'alfas', 'c88' or 'uithof'")
+        
+        if bot == 'alfas':
+            self.alfas_bot.unlocked = False
+        elif bot == 'c88':
+            self.c88_bot.unlocked = False
+        elif bot == 'uithof':
+            self.uithof_bot.unlocked = False
+        else:
+            await turn_context.send_activity("This bot is not known by the ADMIN bot")
+            return
+        
+        await turn_context.send_activity("The bot has been succesfully locked!")
     
     ### Local helper methods!!!
 

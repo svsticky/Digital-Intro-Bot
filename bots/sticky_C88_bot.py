@@ -12,6 +12,7 @@ class StickyC88Bot(TeamsActivityHandler):
         self._app_id = app_id
         self._app_password = app_password
         self.CONFIG = DefaultConfig()
+        self.unlocked = True
     
     async def on_message_activity(self, turn_context: TurnContext):
         """
@@ -20,6 +21,10 @@ class StickyC88Bot(TeamsActivityHandler):
         """
         TurnContext.remove_recipient_mention(turn_context.activity)
         turn_context.activity.text = turn_context.activity.text.strip()
+
+        if not self.unlocked:
+            await turn_context.send_activity("The bot is locked and can thus not be used. Try again later or ask the bot admin to unlock the bot.")
+            return
 
         # Based on a given command, the bot performs a function.
         # Send a certain set of activities to the given group
