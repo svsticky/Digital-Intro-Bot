@@ -237,8 +237,8 @@ class StickyADMINBot(TeamsActivityHandler):
                                                         mg_id=mentor_group.mg_id)
                     else:
                         await turn_context.send_activity(f"Mentor group for '{matching_member.name} does not exist!")
-            if self.alfas_bot: # These are only added when the alfas bot is launched.
-                elif row[3] == "Commissie":
+            elif self.alfas_bot: # These are only added when the alfas bot is launched.
+                if row[3] == "Commissie":
                     user = db.getUserOnType(session, 'committee_user', helper.get_user_id(matching_member))
                     if not user:
                         committee = db.getFirst(session, db.Committee, 'name', row[4])
