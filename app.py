@@ -75,9 +75,9 @@ ADMIN_ADAPTER = BotFrameworkAdapter(ADMIN_SETTINGS)
 ADMIN_ADAPTER.on_turn_error = on_error
 ADMIN_APP_ID = ADMIN_SETTINGS.app_id if ADMIN_SETTINGS.app_id else uuid.uuid4()
 ADMIN_BOT = StickyADMINBot(CONFIG.ADMIN_APP_ID, CONFIG.ADMIN_APP_PASSWORD,
-                           ALFAS_BOT if ALFAS_BOT else None,
-                           C88_BOT if C88_BOT else None,
-                           UITHOF_BOT if UITHOF_BOT else None)
+                           ALFAS_BOT,
+                           C88_BOT,
+                           UITHOF_BOT)
 
 APP = web.Application(middlewares=[aiohttp_error_middleware])
 
