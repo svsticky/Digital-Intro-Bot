@@ -238,7 +238,6 @@ class StickyALFASBot(TeamsActivityHandler):
         session = db.Session()
         ex_enrollment = db.getEnrollment(session, committee_id, user.email)
         committee = db.getFirst(session, db.Committee, 'committee_id', committee_id)
-        print(ex_enrollment)
 
         if not ex_enrollment:
             enrollment = db.Enrollment(committee_id=committee_id, first_name=user.given_name,
