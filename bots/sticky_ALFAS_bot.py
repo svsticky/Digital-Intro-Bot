@@ -188,17 +188,29 @@ class StickyALFASBot(TeamsActivityHandler):
             await turn_context.send_activity("This mentor group does not exist for the bot. Register it first!")
             session.close()
             return
-            
-        committees = db.getNonVisitedCommittees(session, mentor_group.mg_id)
-
-        if not committees:
-            await turn_context.send_activity("All committees are occupied at this moment. Try again later!")
+        
+        if mentor_group.occupied:
+            await turn_context.send_activity("You already have a match with a different committee, this should first be disbanded.")
             session.close()
             return
+            
+        try:
+            self.lock.acquire()
+            committees = db.getNonVisitedCommittees(session, mentor_group.mg_id)
 
+<<<<<<< HEAD
+            if not committees:
+                await turn_context.send_activity("All committees are occupied at this moment. Try again later!")
+                session.close()
+                self.lock.release()
+                return
+
+            chosen_committee = choice(committees)
+=======
         chosen_committee = choice(committees)
         try:
             self.lock.acquire()
+>>>>>>> master
             await self.match_group_with_committee(turn_context, session, chosen_committee, mentor_group)
         finally:
             self.lock.release()
@@ -222,13 +234,15 @@ class StickyALFASBot(TeamsActivityHandler):
             if mentor_group.occupied:
                 await turn_context.send_activity("You already have a match with a different committee, this should first be disbanded.")
                 session.close()
-                return
-
-            committee = db.getFirst(session, db.Committee, 'name', committee_name)
+                return            
 
             # If committee is not occupied
             try:
                 self.lock.acquire()
+<<<<<<< HEAD
+                committee = db.getFirst(session, db.Committee, 'name', committee_name)
+=======
+>>>>>>> master
                 await self.match_group_with_committee(turn_context, session, committee, mentor_group)
             finally:
                 self.lock.release()          
