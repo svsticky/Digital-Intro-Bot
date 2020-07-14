@@ -329,6 +329,7 @@ class StickyALFASBot(TeamsActivityHandler):
             google_values.append(["", "", ""])
 
         GoogleSheet().save_enrollments(google_values)
+        session.close()
         await turn_context.send_activity("Enrollments saved!")
 
     #Helper functions!
