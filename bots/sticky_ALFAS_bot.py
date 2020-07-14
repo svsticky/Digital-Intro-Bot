@@ -1,5 +1,6 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
+import threading
 from random import seed
 from random import choice
 from botbuilder.core import CardFactory, TurnContext, MessageFactory
@@ -18,6 +19,7 @@ class StickyALFASBot(TeamsActivityHandler):
         self._app_password = app_password
         self.CONFIG = DefaultConfig()
         self.unlocked = True
+        self.lock = threading.Lock()
         seed(1230948385) # Does it really matter :P?
 
     async def on_message_activity(self, turn_context: TurnContext):
@@ -195,7 +197,11 @@ class StickyALFASBot(TeamsActivityHandler):
             return
 
         chosen_committee = choice(committees)
-        await self.match_group_with_committee(turn_context, session, chosen_committee, mentor_group)
+        try:
+            self.lock.acquire()
+            await self.match_group_with_committee(turn_context, session, chosen_committee, mentor_group)
+        finally:
+            self.lock.release()
 
     async def choose_committee(self, turn_context: TurnContext):
         #Get user from teams and database
@@ -221,7 +227,11 @@ class StickyALFASBot(TeamsActivityHandler):
             committee = db.getFirst(session, db.Committee, 'name', committee_name)
 
             # If committee is not occupied
-            await self.match_group_with_committee(turn_context, session, committee, mentor_group)            
+            try:
+                self.lock.acquire()
+                await self.match_group_with_committee(turn_context, session, committee, mentor_group)
+            finally:
+                self.lock.release()          
         else:
             await turn_context.send_activity(f"You are not a Mentor and thus not allowed to perform this command.")
         session.close()
