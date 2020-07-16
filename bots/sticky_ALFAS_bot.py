@@ -201,7 +201,6 @@ class StickyALFASBot(TeamsActivityHandler):
             if not committees:
                 await turn_context.send_activity("All committees are occupied at this moment. Try again later!")
                 session.close()
-                self.lock.release()
                 return
 
             chosen_committee = choice(committees)
