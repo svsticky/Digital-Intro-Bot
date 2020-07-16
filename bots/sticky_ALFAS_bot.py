@@ -198,7 +198,6 @@ class StickyALFASBot(TeamsActivityHandler):
             self.lock.acquire()
             committees = db.getNonVisitedCommittees(session, mentor_group.mg_id)
 
-<<<<<<< HEAD
             if not committees:
                 await turn_context.send_activity("All committees are occupied at this moment. Try again later!")
                 session.close()
@@ -206,11 +205,6 @@ class StickyALFASBot(TeamsActivityHandler):
                 return
 
             chosen_committee = choice(committees)
-=======
-        chosen_committee = choice(committees)
-        try:
-            self.lock.acquire()
->>>>>>> master
             await self.match_group_with_committee(turn_context, session, chosen_committee, mentor_group)
         finally:
             self.lock.release()
@@ -239,10 +233,7 @@ class StickyALFASBot(TeamsActivityHandler):
             # If committee is not occupied
             try:
                 self.lock.acquire()
-<<<<<<< HEAD
                 committee = db.getFirst(session, db.Committee, 'name', committee_name)
-=======
->>>>>>> master
                 await self.match_group_with_committee(turn_context, session, committee, mentor_group)
             finally:
                 self.lock.release()          
