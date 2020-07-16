@@ -306,11 +306,12 @@ class StickyALFASBot(TeamsActivityHandler):
             session.close()
             return
 
-        aes_time, sticky_time = db.getAssociationPlanning(session, mentor_group.mg_id)
+        return_message = "De inschrijvingsclub voor de verenigingen komen langs op de volgende tijden:\n\n"
+        association_times = db.getAssociationPlanning(session, mentor_group.mg_id)
+        for time in association_times:
+            return_message += f"- {time[0]}: {time[1]} uur\n\n"
 
-        await turn_context.send_activity("De inschrijvingsclub voor de verenigingen komen langs op de volgende tijden:\n\n"\
-                                         f"Sticky: {sticky_time} hours\n\n"\
-                                         f"Aes-kwadraat: {aes_time} hours")
+        await turn_context.send_activity(return_message)
 
     async def save_enrollments(self, turn_context: TurnContext):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)

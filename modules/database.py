@@ -57,9 +57,10 @@ def getEnrollment(session, committee_id, email):
 
 def getAssociationPlanning(session, mg_id):
     mentor_group = session.query(MentorGroup).filter(MentorGroup.mg_id == mg_id).first()
-    aes_time = mentor_group.aes_timeslot
-    sticky_time = mentor_group.sticky_timeslot
-    return aes_time, sticky_time
+    association_times = []
+    for association in _config.ASSOCIATIONS:
+        association_times.append((association, eval(f'mentor_group.{association}_timeslot')))
+    return association_times
 
 def getQuestionsFromSet(session, group_id, questionSet):
     return_value = []
