@@ -29,9 +29,7 @@ class StickyADMINBot(TeamsActivityHandler):
         team_info: TeamsInfo, turn_context: TurnContext
     ):
         message = "Welcome message here..."
-        print("Now in members added")
         for member in teams_members_added:
-            print("a message has been sent!")
             await helper.create_personal_conversation(turn_context, member, message, self._app_id)
         return
 
@@ -44,24 +42,24 @@ class StickyADMINBot(TeamsActivityHandler):
         # In the bot documentation, someone should be pointed to a bot admin if there are problems.
 
         # Register a user as an intro user
-        if turn_context.activity.text.startswith("RegisterIntro"):
+        if turn_context.activity.text.startswith("IkBenIntro"):
             await self.register_intro(turn_context)
             return
 
         # Register a user as a mentor
-        if turn_context.activity.text.startswith("RegisterMentor"):
+        if turn_context.activity.text.startswith("IkBenMentor"):
             await self.register_mentor(turn_context)
             return
 
         # Register a user as a committee member
-        if turn_context.activity.text.startswith("RegisterCommitteeMember"):
+        if turn_context.activity.text.startswith("IkBenCommissielid"):
             if self.alfas_bot:
                 await self.register_committee_member(turn_context)
             else:
-                await turn_context.send_activity("This command is disabled because the corresponding bot has not been launched.")
+                await turn_context.send_activity("Dit commando is niet actief omdat de bijbehorende bot niet draait.")
             return
         
-        if turn_context.activity.text == "UserInfo":
+        if turn_context.activity.text == "GebruikersInfo":
             await self.user_info(turn_context)
             return
 
@@ -70,22 +68,22 @@ class StickyADMINBot(TeamsActivityHandler):
 
         session = db.Session()
         if not db.getUserOnType(session, 'intro_user', user.id) and user_full_name not in self.CONFIG.MAIN_ADMIN:
-            await turn_context.send_activity("You are no admin and thus not allowed to use this bot.")
+            await turn_context.send_activity("Je bent geen administrator en kan dit command dus niet uitvoeren!")
             session.close()
             return
         session.close()
 
         # Fully initialize bot (we might want to add separate inits)
-        if turn_context.activity.text == "Initialize":
+        if turn_context.activity.text == "Initialiseren":
             await self.initialize(turn_context)
             return
         
         # Add a committee        
-        if turn_context.activity.text.startswith("AddCommittee"):
+        if turn_context.activity.text.startswith("CommissieToevoegen"):
             if self.alfas_bot:
                 await self.add_committee(turn_context)
             else:
-                await turn_context.send_activity("This command is disabled because the corresponding bot has not been launched.")
+                await turn_context.send_activity("Dit commando is niet actief omdat de bijbehorende bot niet draait.")
             return
 
         # Follow-up registering of a committee
@@ -93,7 +91,7 @@ class StickyADMINBot(TeamsActivityHandler):
             if self.alfas_bot:
                 await self.register_committee(turn_context)
             else:
-                await turn_context.send_activity("This command is disabled because the corresponding bot has not been launched.")
+                await turn_context.send_activity("Dit commando is niet actief omdat de bijbehorende bot niet draait.")
             return
 
         # Follow-up registering of a mentor group
@@ -102,19 +100,19 @@ class StickyADMINBot(TeamsActivityHandler):
             return
 
         # Add a mentor group
-        if turn_context.activity.text.startswith("AddMentorGroup"):
+        if turn_context.activity.text.startswith("MentorgroepToevoegen"):
             await self.add_mentor_group(turn_context)
             return
         
-        if turn_context.activity.text.startswith("Unlock"): #followed by one of ['alfas', 'c88', 'uithof']
+        if turn_context.activity.text.startswith("Activeer"): #followed by one of ['alfas', 'c88', 'uithof']
             await self.unlock_bot(turn_context)
             return
 
-        if turn_context.activity.text.startswith("Lock"): #followed by one of ['alfas', 'c88', 'uithof']
+        if turn_context.activity.text.startswith("Deactiveer"): #followed by one of ['alfas', 'c88', 'uithof']
             await self.lock_bot(turn_context)
             return
 
-        await turn_context.send_activity("I don't know this command. Maybe you made a typo?")
+        await turn_context.send_activity("Ik ken dit commando niet. Misschien heb je een typfout gemaakt?")
     
     # Main initialize Method
     async def initialize(self, turn_context: TurnContext):
@@ -136,13 +134,12 @@ class StickyADMINBot(TeamsActivityHandler):
 
         session.close()
         #Feedback to user.
-        await turn_context.send_activity("All members have been added to the bot with their respective rights")
-        await turn_context.send_activity("Done initializing the bot.")
+        await turn_context.send_activity("De bot is geïnitialiseerd!")
     
     ### Initialization methods!!!!
 
     async def init_channels(self, turn_context: TurnContext, session):
-        await turn_context.send_activity("Starting initialization of committees and mentor groups...")
+        await turn_context.send_activity("Gestart met het initialiseren van groepen gebasseerd op Teamskanalen...")
         added_groups = ""
 
         # Get all channels of the team
@@ -178,9 +175,8 @@ class StickyADMINBot(TeamsActivityHandler):
                     existing_mentor_group.name = group_name
                     db.dbMerge(session, existing_mentor_group)
                 # Notify the channel that it is now an ALFAS channel
-                init_message = MessageFactory.text(f"This channel is now the main ALFAS channel for Mentor group '{group_name}'")
+                init_message = MessageFactory.text(f"Dit kanaal is nu het ALFASkanaal voor Mentorgroep: '{group_name}'")
                 await helper.create_channel_conversation(turn_context, channel.id, init_message)
-                added_groups += f'{group_name}, '
 
             #Check if it is a "Commissie" channel
             if self.alfas_bot: # If the alfas bot is launched
@@ -197,16 +193,15 @@ class StickyADMINBot(TeamsActivityHandler):
                         existing_committee.name = committee_name
                         db.dbMerge(session, existing_committee)
                     # Notify the channel that it is now an ALFAS channel
-                    init_message = MessageFactory.text(f"This channel is now the main ALFAS channel for Committee '{committee_name}'")
+                    init_message = MessageFactory.text(f"Dit kanaal is nu het ALFASkanaal voor Commissie: '{committee_name}'")
                     await helper.create_channel_conversation(turn_context, channel.id, init_message)
-                    added_groups += f'{committee_name}, '
+
         # Done with the channels
-        await turn_context.send_activity(f"The following groups have been added: {added_groups}")
-        await turn_context.send_activity("All committees and mentor groups have been added.")
+        await turn_context.send_activity("Alle groepen zijn geïnitialiseerd!")
 
     async def init_members(self, turn_context: TurnContext, session):
         # Starting with adding members. Members are retrieved from a private google sheet.
-        await turn_context.send_activity("Starting initialization of bot members...")
+        await turn_context.send_activity("Gestart met het initialiseren van gebruikers via de google sheets...")
         sheet_values = GoogleSheet().get_members()
         # Get members from teams
         members = await TeamsInfo.get_members(turn_context)
@@ -236,7 +231,7 @@ class StickyADMINBot(TeamsActivityHandler):
                                                         user_name=matching_member.name,
                                                         mg_id=mentor_group.mg_id)
                     else:
-                        await turn_context.send_activity(f"Mentor group for '{matching_member.name} does not exist!")
+                        await turn_context.send_activity(f"De mentorgroep voor '{matching_member.name} bestaat niet!")
             elif self.alfas_bot: # These are only added when the alfas bot is launched.
                 if row[3] == "Commissie":
                     user = db.getUserOnType(session, 'committee_user', helper.get_user_id(matching_member))
@@ -247,17 +242,17 @@ class StickyADMINBot(TeamsActivityHandler):
                                                             user_name=matching_member.name,
                                                             committee_id=committee.committee_id)
                         else:
-                            await turn_context.send_activity(f"Committee for '{matching_member.name}' does not exist!")
+                            await turn_context.send_activity(f"De commissie voor '{matching_member.name}' bestaat niet!")
 
             # Insert if a database_member is created (this is not the case if the user already exists in the database).
             if database_member is not None:
                 db.dbInsert(session, database_member)
-        
-        await turn_context.send_activity("Done initializing bot members.")
+
+        await turn_context.send_activity("Alle gebruikers zijn toegevoegd met bijbehorende rechten.")
 
     async def init_timeslots(self, turn_context: TurnContext, session):
         # Obtain timeslots sheet
-        await turn_context.send_activity("Starting obtaining timeslots for mentorgroups...")
+        await turn_context.send_activity("Gestart met het ophalen van verenigingstijdsloten voor de mentorgroepen...")
         sheet_values = GoogleSheet().get_timeslots()
 
         for row in sheet_values[1:]:
@@ -274,11 +269,11 @@ class StickyADMINBot(TeamsActivityHandler):
 
         if not self.scheduler.running:
             self.scheduler.start()
-        await turn_context.send_activity("All timeslots have been obtained.")
+        await turn_context.send_activity("Alle tijdsloten zijn toegevoegd!")
 
     async def fetch_crazy88_questions(self, turn_context: TurnContext, session):
         # Obtain questions from Google sheets 
-        await turn_context.send_activity("Fetching all Crazy 88 questions...")
+        await turn_context.send_activity("Gestart met het ophalen van alle Crazy88-opdrachten...")
         sheet_values = GoogleSheet().get_questions()
 
         for i, q in enumerate(sheet_values):
@@ -291,7 +286,7 @@ class StickyADMINBot(TeamsActivityHandler):
                 question.question = q
                 db.dbMerge(session, question)
                 
-        await turn_context.send_activity(f"Finished getting all Crazy 88 questions! Added / updated {len(sheet_values)} values")
+        await turn_context.send_activity("Alle Crazy88-opdrachten zijn opgehaald!")
     
     ### Methods to add users and groups separately to the bot!!!
 
@@ -300,15 +295,15 @@ class StickyADMINBot(TeamsActivityHandler):
         try:
             committee_name = turn_context.activity.text.split()[1]
         except IndexError:
-            await turn_context.send_activity("You need to specify the name for the committee")
+            await turn_context.send_activity("Je moet de naam van de commissie aan de bot meegeven: CommissieToevoegen <naam>")
             return
         channels = await TeamsInfo.get_team_channels(turn_context)
         # A card is returned to the user that contains all channels as buttons.
         # A click on the button will send a new command to the bot.
         card = CardFactory.hero_card(
             HeroCard(
-                title="Choose corresponding Committee channel",
-                text="Choose the channel that the committee belongs to.",
+                title="Commissiekanaal.",
+                text="Kies het kanaal waar deze commissie aan gelinkt zal worden.",
                 buttons=[
                     CardAction(
                         type=ActionTypes.message_back,
@@ -330,7 +325,7 @@ class StickyADMINBot(TeamsActivityHandler):
             committee_name = command_info[2]
             channel_id = command_info[1]
         except IndexError:
-            await turn_context.send_activity("Something went wrong internally in the bot. Please contact an Intro Member")
+            await turn_context.send_activity("Iets ging intern mis bij de bot. Contacteer iemand van de introductiecommissie.")
             return
 
         #Save or update the new committee
@@ -343,21 +338,21 @@ class StickyADMINBot(TeamsActivityHandler):
             committee = db.Committee(name=committee_name, info="", channel_id=channel_id)
             db.dbInsert(session, committee)
         session.close()
-        await turn_context.send_activity(f"Committee '{committee_name}' was successfully added!")
+        await turn_context.send_activity(f"De commissie '{committee_name}' is succesvol toegevoegd!")
 
     # Function that starts adding a separate mentor group.
     async def add_mentor_group(self, turn_context: TurnContext):
         try:
             mentor_group_name = turn_context.activity.text.split()[1]
         except IndexError:
-            await turn_context.send_activity("You need to specify the name for the mentorgroup")
+            await turn_context.send_activity("Je moet de naam van de commissie aan de bot meegeven: MentorgroepToevoegen <naam>")
             return
         channels = await TeamsInfo.get_team_channels(turn_context)
         # Again send a card with all channels to choose the corresponding one.
         card = CardFactory.hero_card(
             HeroCard(
-                title="Choose corresponding Mentor Group channel",
-                text="Choose the channel that the mentor group belongs to.",
+                title="Mentorgroepkanaal",
+                text="Kies het kanaal waar deze mentorgroep aan gelinkt moet worden.",
                 buttons=[
                     CardAction(
                         type=ActionTypes.message_back,
@@ -377,7 +372,7 @@ class StickyADMINBot(TeamsActivityHandler):
             mentor_group_name = command_info[2]
             channel_id = command_info[1]
         except IndexError:
-            await turn_context.send_activity("Something went wrong internally in the bot. Please contact an Intro Member")
+            await turn_context.send_activity("Iets ging intern mis bij de bot. Contacteer iemand van de introductiecommissie.")
             return
 
         session = db.Session()
@@ -388,14 +383,14 @@ class StickyADMINBot(TeamsActivityHandler):
         else:
             mentor_group = db.MentorGroup(name=mentor_group_name, channel_id=channel_id)
             db.dbInsert(session, mentor_group)
-        await turn_context.send_activity(f"Mentor Group '{mentor_group_name}' was successfully added!")
+        await turn_context.send_activity(f"Mentorgroep '{mentor_group_name}' is succesvol toegevoegd!")
         session.close()
 
     async def register_intro(self, turn_context: TurnContext):
         try:
             intro_password = turn_context.activity.text.split()[1]
         except IndexError:
-            await turn_context.send_activity("Wrong password! You are not cool enough to be Intro...")
+            await turn_context.send_activity("Authenticatiefout! Je bent niet koel genoeg om intro te zijn...")
             return
 
         if intro_password == self.CONFIG.INTRO_PASSWORD:
@@ -405,12 +400,12 @@ class StickyADMINBot(TeamsActivityHandler):
             if not existing_user:
                 new_user = db.IntroUser(user_teams_id=helper.get_user_id(sender), user_name=sender.name)
                 db.dbInsert(session, new_user)
-                await turn_context.send_activity("You have been successfully registered as an Intro Member")
+                await turn_context.send_activity("Je bent succesvol geregistreerd als Intro")
             else:
-                await turn_context.send_activity("You have already been registered as this type of user.")
+                await turn_context.send_activity("Je bent al geregistreerd als Intro!")
             session.close()
         else:
-            await turn_context.send_activity("Wrong password! You are not cool enough to be Intro...")
+            await turn_context.send_activity("Authenticatiefout! Je bent niet koel genoeg om intro te zijn...")
 
     async def register_mentor(self, turn_context: TurnContext):
         command_info = turn_context.activity.text.split()
@@ -419,7 +414,7 @@ class StickyADMINBot(TeamsActivityHandler):
             mentor_password = command_info[1]
             mentor_group_name = command_info[2]
         except IndexError:
-            await turn_context.send_activity("Wrong command style. It needs to look like this: RegisterMentor <password> <mentor_group_name>.")
+            await turn_context.send_activity("Dit commando heeft meer informatie nodig: IkBenMentor <wachtwoord> <mentorgroep_naam>.")
             return
 
         if mentor_password == self.CONFIG.MENTOR_PASSWORD:
@@ -434,16 +429,16 @@ class StickyADMINBot(TeamsActivityHandler):
                                             user_name=sender.name,
                                             mg_id=mentor_group.mg_id)
                     db.dbInsert(session, new_user)
-                    await turn_context.send_activity(f"You have been successfully registered as a Mentor of group '{mentor_group_name}''")
+                    await turn_context.send_activity(f"Je bent succesvol geregistreerd als een Mentor voor groep: '{mentor_group_name}''")
                 else:
-                    await turn_context.send_activity('This committee does not exist yet. Please contact an Intro member if you think this is not right.')
+                    await turn_context.send_activity('Deze mentorgroep bestaat nog niet! Contacteer een Introlid als je vindt dat dit niet klopt.')
             else:
                 existing_user.mg_id = mentor_group.mg_id
                 db.dbMerge(session, existing_user)
-                await turn_context.send_activity(f"Mentor user '{sender.name}' has been successfully updated!")
+                await turn_context.send_activity(f"Mentor '{sender.name}' is succesvol bijgewerkt!")
             session.close()
         else:
-            turn_context.send_activity('Wrong password!')
+            turn_context.send_activity('Verkeerd wachtwoord!')
 
     async def register_committee_member(self, turn_context: TurnContext):
         command_info = turn_context.activity.text.split()
@@ -452,7 +447,7 @@ class StickyADMINBot(TeamsActivityHandler):
             committee_password = command_info[1]
             committee_name = command_info[2]
         except IndexError:
-            await turn_context.send_activity("Wrong command style. It needs to look like this: RegisterCommitteeMember <password> <committee>.")
+            await turn_context.send_activity("Dit commando heeft meer informatie nodig: IkBenCommissielid <wachtwoord> <commissie_naam>.")
             return
 
         if committee_password == self.CONFIG.COMMITTEE_PASSWORD:
@@ -467,16 +462,16 @@ class StickyADMINBot(TeamsActivityHandler):
                                                 user_name=sender.name,
                                                 committee_id=committee.committee_id)
                     db.dbInsert(session, new_user)
-                    await turn_context.send_activity(f'You have been successfully registered as a Committee Member of {committee_name}')
+                    await turn_context.send_activity(f"Je bent succesvol geregistreerd als een Commissielid van '{committee_name}'")
                 else:
-                    await turn_context.send_activity('This committee does not exist yet. Please contact an Intro member if you think this is not right.')
+                    await turn_context.send_activity('Deze commissie bestaat nog niet! Contacteer een Introlid als je vindt dat dit niet klopt.')
             else:
                 existing_user.committee_id = committee.committee_id
                 db.dbMerge(session, existing_user)
-                await turn_context.send_activity(f"Committee user '{sender.name}' has been successfully updated!")
+                await turn_context.send_activity(f"Commissielid '{sender.name}' is succesvol bijgewerkt")
             session.close()
         else:
-            await turn_context.send_activity('Wrong password!')
+            await turn_context.send_activity('Verkeerd wachtwoord!')
 
     async def user_info(self, turn_context: TurnContext):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
@@ -485,22 +480,22 @@ class StickyADMINBot(TeamsActivityHandler):
         users = db.getAll(session, db.User, 'user_teams_id', helper.get_user_id(user))
 
         if not users:
-            await turn_context.send_activity("You are not registered as a special user to the bot")
+            await turn_context.send_activity("Je bent niet als een speciale gebruiker bij de bot geregistreerd!")
             session.close()
             return
         
-        return_string = "You are known to the bot as follows:   \n"
+        return_string = "Je bent als volgt bij de bot bekend:   \n"
         for user in users:
             if user.user_type == "intro_user":
-                return_string += f'- Introduction committee member   \n'
+                return_string += f'- Introlid   \n'
             elif user.user_type == "mentor_user":
                 mentor_user = db.getUserOnType(session, 'mentor_user', user.user_teams_id)
                 mentor_group = db.getFirst(session, db.MentorGroup, 'mg_id', mentor_user.mg_id)
-                return_string += f'- Mentor for group {mentor_group.name}   \n'
+                return_string += f'- Mentor voor groep {mentor_group.name}   \n'
             elif user.user_type == "committee_user":
                 committee_user = db.getUserOnType(session, 'committee_user', user.user_teams_id)
                 committee = db.getFirst(session, db.Committee, 'committee_id', committee_user.committee_id)
-                return_string += f'- Committee member for {committee.name}   \n'
+                return_string += f'- Commissielid voor {committee.name}   \n'
         session.close()
         await turn_context.send_activity(return_string)
 
@@ -509,7 +504,7 @@ class StickyADMINBot(TeamsActivityHandler):
         try:
             bot = turn_context.activity.text.split()[1]
         except IndexError:
-            await turn_context.send_activity("You need to specify the bot you want to unlock by specifying 'alfas', 'c88' or 'uithof'")
+            await turn_context.send_activity("Je moet specificeren welke bot je wilt activeren: Activeer <'alfas', 'c88' of 'uithof'>")
         
         if bot == 'alfas' and self.alfas_bot:
             self.alfas_bot.unlocked = True
@@ -518,17 +513,17 @@ class StickyADMINBot(TeamsActivityHandler):
         elif bot == 'uithof' and self.uithof_bot:
             self.uithof_bot.unlocked = True
         else:
-            await turn_context.send_activity("This bot is not known by the ADMIN bot or has not been launched")
+            await turn_context.send_activity("Deze bot is niet bekend bij de ADMINbot of is niet gestart.")
             return
         
-        await turn_context.send_activity("The bot has been succesfully unlocked!")
+        await turn_context.send_activity("De bot is succesvol geactiveerd!")
 
     async def lock_bot(self, turn_context: TurnContext):
 
         try:
             bot = turn_context.activity.text.split()[1]
         except IndexError:
-            await turn_context.send_activity("You need to specify the bot you want to lock by specifying 'alfas', 'c88' or 'uithof'")
+            await turn_context.send_activity("Je moet specificeren welke bot je wilt deactiveren: Activeer <'alfas', 'c88' of 'uithof'>")
         
         if bot == 'alfas' and self.alfas_bot:
             self.alfas_bot.unlocked = False
@@ -537,15 +532,15 @@ class StickyADMINBot(TeamsActivityHandler):
         elif bot == 'uithof' and self.uithof_bot:
             self.uithof_bot.unlocked = False
         else:
-            await turn_context.send_activity("This bot is not known by the ADMIN bot or has not been launched")
+            await turn_context.send_activity("Deze bot is niet bekend bij de ADMINbot of is niet gestart.")
             return
         
-        await turn_context.send_activity("The bot has been succesfully locked!")
+        await turn_context.send_activity("De bot is succesvol geactiveerd!")
     
     ### Local helper methods!!!
 
     async def send_reminder(self, turn_context: TurnContext, minutes, channel_id, association):
-        message = MessageFactory.text(f"Reminder! You are expected visit the registration booth of {association} in {minutes} minutes.")
+        message = MessageFactory.text(f"Herinnering! De inschrijfbalie van {association} zal jullie groep bezoeken over {minutes} minuten.")
         await helper.create_channel_conversation(turn_context, channel_id, message)
 
     def string_to_datetime(self, time: str):

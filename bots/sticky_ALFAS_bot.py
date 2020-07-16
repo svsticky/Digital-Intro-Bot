@@ -31,13 +31,13 @@ class StickyALFASBot(TeamsActivityHandler):
         turn_context.activity.text = turn_context.activity.text.strip()
 
         if not self.unlocked:
-            await turn_context.send_activity("The bot is locked and can thus not be used. Try again later or ask the bot admin to unlock the bot.")
+            await turn_context.send_activity("De bot is gedeactiveerd en kan dus niet gebruikt worden.")
             return
 
         # Based on a given command, the bot performs a function.
 
         # Return all committees that are available at this moment
-        if turn_context.activity.text == "AvailableCommittees":
+        if turn_context.activity.text == "BeschikbareCommissies":
             await self.available_committees(turn_context)
             return
 
@@ -55,11 +55,11 @@ class StickyALFASBot(TeamsActivityHandler):
             await self.enroll(turn_context)
             return
 
-        if turn_context.activity.text == "Release":
+        if turn_context.activity.text == "Vrijgeven":
             await self.release_committee(turn_context)
             return
         
-        if turn_context.activity.text == "Associations":
+        if turn_context.activity.text == "VerenigingsPlanning":
             await self.association_planning(turn_context)
             return
         
@@ -68,17 +68,17 @@ class StickyALFASBot(TeamsActivityHandler):
             return
 
         # Get all intro members
-        if turn_context.activity.text == "GetIntro":
+        if turn_context.activity.text == "Introleden":
             await self.get_intro(turn_context)
             return
         
         # Save enrollments to google sheet
-        if turn_context.activity.text == "SaveEnrollments":
+        if turn_context.activity.text == "InschrijvingenOpslaan":
             await self.save_enrollments(turn_context)
             return
 
         #TODO: what to send if it is not a command?
-        await turn_context.send_activity("You provided a non valid command, maybe you made a typo?")
+        await turn_context.send_activity("Ik ken dit commando niet. Misschien heb je een typfout gemaakt?")
         return
 
     # Obtains all intro members
@@ -97,14 +97,14 @@ class StickyALFASBot(TeamsActivityHandler):
         channel_id = turn_context.activity.channel_data['teamsChannelId']
         session = db.Session()
         if not db.getFirst(session, db.MentorGroup, 'channel_id', channel_id):
-            await turn_context.send_activity("You can only perform this command from a Mentorgroep channel")
+            await turn_context.send_activity("Je kunt dit commando alleen uitvoeren in een kanaal van een mentorgroep")
             session.close()
             return
 
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         mentor_db_user = db.getUserOnType(session, 'mentor_user', helper.get_user_id(user))
         if not mentor_db_user:
-            await turn_context.send_activity("Only a mentor can perform this action")
+            await turn_context.send_activity("Alleen een mentor kan dit commando uitvoeren.")
             session.close()
             return
 
@@ -112,9 +112,9 @@ class StickyALFASBot(TeamsActivityHandler):
 
         card = CardFactory.hero_card(
             HeroCard(
-                title="Available Committees",
-                text='Choose the committee that you want to meet next! You can either pick a committee or let the bot choose one at random. \
-                      Click refresh to refresh the list',
+                title="Beschikbare Commissies",
+                text="Kies de commissie die je wil ontmoeten! Je kunt een commissie kiezen of de bot dit werkt laten doen. \
+                      Klik op 'Refresh' om de lijst te vernieuwen.",
                 buttons=[
                     CardAction(
                         type=ActionTypes.message_back,
@@ -143,7 +143,7 @@ class StickyALFASBot(TeamsActivityHandler):
         session = db.Session()
         mentor_db_user = db.getUserOnType(session, 'mentor_user', helper.get_user_id(user))
         if not mentor_db_user:
-            await turn_context.send_activity("Only a mentor can perform this action")
+            await turn_context.send_activity("Alleen een mentor kan deze actie uitvoeren!")
             session.close()
             return
 
@@ -151,9 +151,9 @@ class StickyALFASBot(TeamsActivityHandler):
 
         card = CardFactory.hero_card(
             HeroCard(
-                title="Available Committees",
-                text="Choose the committee that you want to meet next! You can either pick a committee or let the bot choose one at random. \
-                      Click 'Refresh' to refresh the list",
+                title="Beschikbare Commissies",
+                text="Kies de commissie die je wil ontmoeten! Je kunt een commissie kiezen of de bot dit werkt laten doen. \
+                      Klik op 'Refresh' om de lijst te vernieuwen.",
                 buttons=[
                     CardAction(
                         type=ActionTypes.message_back,
@@ -185,12 +185,12 @@ class StickyALFASBot(TeamsActivityHandler):
         mentor_group = db.getFirst(session, db.MentorGroup, 'channel_id', channel_id)
 
         if not mentor_group:
-            await turn_context.send_activity("This mentor group does not exist for the bot. Register it first!")
+            await turn_context.send_activity("Deze mentorgroep bestaat niet voor de bot. Registreer de groep eerst of vraag een introlid dit te doen.")
             session.close()
             return
         
         if mentor_group.occupied:
-            await turn_context.send_activity("You already have a match with a different committee, this should first be disbanded.")
+            await turn_context.send_activity("Je hebt al een match met een andere commissie, deze moet eerst door de commissie weer worden vrijgegeven.")
             session.close()
             return
             
@@ -199,7 +199,7 @@ class StickyALFASBot(TeamsActivityHandler):
             committees = db.getNonVisitedCommittees(session, mentor_group.mg_id)
 
             if not committees:
-                await turn_context.send_activity("All committees are occupied at this moment. Try again later!")
+                await turn_context.send_activity("Alle commissies zijn op dit moment bezet. Probeer het later nog eens.")
                 session.close()
                 return
 
@@ -220,12 +220,12 @@ class StickyALFASBot(TeamsActivityHandler):
             try:
                 committee_name = turn_context.activity.text.split()[1]
             except IndexError:
-                await turn_context.send_activity("Something went wrong obtaining the chosen committee, please contact the bot owner")
+                await turn_context.send_activity("Er ging iets intern mis bij de bot. Contacteer een introlid om het op te lossen.")
 
             mentor_group = db.getFirst(session, db.MentorGroup, 'mg_id', db_user.mg_id)
 
             if mentor_group.occupied:
-                await turn_context.send_activity("You already have a match with a different committee, this should first be disbanded.")
+                await turn_context.send_activity("Je hebt al een match met een andere commissie, deze moet eerst door de commissie weer worden vrijgegeven.")
                 session.close()
                 return            
 
@@ -237,7 +237,7 @@ class StickyALFASBot(TeamsActivityHandler):
             finally:
                 self.lock.release()          
         else:
-            await turn_context.send_activity(f"You are not a Mentor and thus not allowed to perform this command.")
+            await turn_context.send_activity(f"Je bent geen mentor wat betekent dat je geen rechten hebt om dit commando uit te voeren.")
         session.close()
 
     async def enroll(self, turn_context: TurnContext):
@@ -246,7 +246,7 @@ class StickyALFASBot(TeamsActivityHandler):
         try:
             committee_id = turn_context.activity.text.split()[1]
         except IndexError:
-            await turn_context.send_activity("Something went wrong when clicking the button, please contact an intro member")
+            await turn_context.send_activity("Er ging iets intern mis bij de bot. Contacteer een introlid om het op te lossen.")
             return
 
         session = db.Session()
@@ -257,7 +257,7 @@ class StickyALFASBot(TeamsActivityHandler):
             enrollment = db.Enrollment(committee_id=committee_id, first_name=user.given_name,
                                        last_name=user.surname, email_address=user.email)
             db.dbInsert(session, enrollment)
-            await helper.create_personal_conversation(turn_context, user, f"You have been added to the interest list of '{committee.name}'", self._app_id)
+            await helper.create_personal_conversation(turn_context, user, f"Je bent toegevoegd aan de interesselijst voor '{committee.name}'", self._app_id)
         session.close()
 
     async def release_committee(self, turn_context: TurnContext):
@@ -268,6 +268,10 @@ class StickyALFASBot(TeamsActivityHandler):
         if db_user:
             # Set committee occupied to False
             committee = db.getFirst(session, db.Committee, 'committee_id', db_user.committee_id)
+            if not committee.occupied:
+                message = MessageFactory.text("De commissie was al vrij. Dit commando is overbodig.")
+                await helper.create_channel_conversation(turn_context, committee.channel_id, message)
+                return
             committee.occupied = False
             db.dbMerge(session, committee)
             # Get the visit and set it to finished.
@@ -278,12 +282,12 @@ class StickyALFASBot(TeamsActivityHandler):
             mentor_group = db.getFirst(session, db.MentorGroup, 'mg_id', visit.mg_id)
             mentor_group.occupied = False
             db.dbMerge(session, mentor_group)
-            release_message = MessageFactory.text("This committee has now been freed from occupation. Expect a new request soon!")
+            release_message = MessageFactory.text("De commissie is weer vrijgegeven. Verwacht een nieuwe ronde spoedig!")
             await helper.create_channel_conversation(turn_context, committee.channel_id, release_message)
-            release_message = MessageFactory.text("You are now able to request a new Committee to visit.")
+            release_message = MessageFactory.text("Jullie kunnen weer een nieuwe commissie kiezen!")
             await helper.create_channel_conversation(turn_context, mentor_group.channel_id, release_message)
         else:
-            await turn_context.send_activity("You are not allowed to perform this command.")
+            await turn_context.send_activity("Je bent niet gemachtigd om dit command uit te voeren.")
         session.close()
 
     async def association_planning(self, turn_context: TurnContext):
@@ -291,20 +295,20 @@ class StickyALFASBot(TeamsActivityHandler):
         session = db.Session()
         mentor_group = db.getFirst(session, db.MentorGroup, 'channel_id', channel_id)
         if not mentor_group:
-            await turn_context.send_activity("You can only perform this command from a Mentorgroep channel")
+            await turn_context.send_activity("Je kunt dit commando alleen uitvoeren vanuit een mentorgroep kanaal.")
             session.close()
             return
 
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         mentor_db_user = db.getUserOnType(session, 'mentor_user', helper.get_user_id(user))
         if not mentor_db_user:
-            await turn_context.send_activity("Only a mentor can perform this action")
+            await turn_context.send_activity("Alleen een mentor kan dit commando uitvoeren.")
             session.close()
             return
 
         aes_time, sticky_time = db.getAssociationPlanning(session, mentor_group.mg_id)
 
-        await turn_context.send_activity("You are expected to arrive at the registration booths at the following times:\n\n"\
+        await turn_context.send_activity("De inschrijvingsclub voor de verenigingen komen langs op de volgende tijden:\n\n"\
                                          f"Sticky: {sticky_time} hours\n\n"\
                                          f"Aes-kwadraat: {aes_time} hours")
 
@@ -314,7 +318,7 @@ class StickyALFASBot(TeamsActivityHandler):
         db_user = db.getUserOnType(session, 'intro_user', helper.get_user_id(user))
 
         if not db_user:
-            await turn_context.send_activity("You are not allowed to use this command!")
+            await turn_context.send_activity("Je bent niet gemachtigd om dit command uit te voeren.")
             session.close()
             return
         
@@ -343,7 +347,7 @@ class StickyALFASBot(TeamsActivityHandler):
 
         GoogleSheet().save_enrollments(google_values)
         session.close()
-        await turn_context.send_activity("Enrollments saved!")
+        await turn_context.send_activity("De intresselijst is succesvol opgeslagen!")
 
     #Helper functions!
     async def match_group_with_committee(self, turn_context, session, committee, mentor_group):
@@ -356,14 +360,14 @@ class StickyALFASBot(TeamsActivityHandler):
             db.dbMerge(session, mentor_group)
             visit = db.Visit(mg_id=mentor_group.mg_id, committee_id=committee.committee_id)
             db.dbInsert(session, visit)
-            await turn_context.send_activity(f"The members of committee '{committee.name}' will be joining your channel soon!")
-            committee_message = MessageFactory.text(f"You are asked to join the channel of mentor group '{mentor_group.name}'")
+            await turn_context.send_activity(f"De leden van de commissie '{committee.name}' zullen jullie gesprek zo spoedig mogelijk vergezellen!")
+            committee_message = MessageFactory.text(f"Jullie worden verwacht bij mentorgroep: '{mentor_group.name}'. Ga er zo spoedig mogelijk heen!")
             await helper.create_channel_conversation(turn_context, committee.channel_id, committee_message)
             enroll_button = await self.create_enrollment_button(committee)
             await turn_context.send_activity(enroll_button)
         else:
-            await turn_context.send_activity("This committee is already occupied, please choose another committee to visit.\
-                                                  This is probably happened due to the fact that another group was a bit faster.")
+            await turn_context.send_activity("Deze commissie is al bezet. Kies een andere.\
+                                              Dit is waarschijnlijk gebeurd omdat een andere groep net iets sneller was.")
 
     #Example functions!
     async def return_members(self, turn_context: TurnContext):
@@ -379,13 +383,13 @@ class StickyALFASBot(TeamsActivityHandler):
     async def create_enrollment_button(self, committee):
         card = CardFactory.hero_card(
             HeroCard(
-                title='Enrollment',
-                text='A new committee will enlighten you with their activities. '\
-                     'If you are interested in the committee, push the enrollment button',
+                title='Intresse',
+                text=f"De commissie {committee.name} zal jullie vertellen over hun activiteiten. "\
+                      'Als je intresse hebt om jezelf bij deze commissie te voegen, klik dan op de onderstaande knop.',
                 buttons=[
                     CardAction(
                         type=ActionTypes.message_back,
-                        title=f"Enroll for '{committee.name}'",
+                        title="Ik ben geïnteresseerd!",
                         text=f"Enroll {committee.committee_id}",
                     ),
                 ],

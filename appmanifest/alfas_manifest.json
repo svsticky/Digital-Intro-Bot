@@ -42,20 +42,16 @@
           ],
           "commands": [
             {
-              "title": "MentionMe",
-              "description": "Sends message with @mention of the sender"
+              "title": "BeschikbareCommissies",
+              "description": "Laat alle beschikbare commissies zien."
             },
             {
-              "title": "Show Welcome",
-              "description": "Shows the welcome card"
+              "title": "Vrijgeven",
+              "description": "Commando voor commissieleden om de visite bij een mentorgroep te beïndigen."
             },
             {
-              "title": "MessageAllMembers",
-              "description": "Send 1 to 1 message to all members of the current conversation"
-            },
-            {
-              "title": "AvailableCommittees",
-              "description": "Show all available committees"
+              "title": "VerenigingsPlanning",
+              "description": "Geeft aan wanneer de inschrijving voor de verenigingen langskomt."
             }
           ]
         }

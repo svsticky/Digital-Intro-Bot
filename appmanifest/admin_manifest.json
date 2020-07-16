@@ -42,8 +42,8 @@
           ],
           "commands": [
             {
-              "title": "Initialize",
-              "description": "Sends message with @mention of the sender"
+              "title": "GebruikersInfo",
+              "description": "Vertelt hoe je bekent bent bij de bot."
             }
           ]
         }
