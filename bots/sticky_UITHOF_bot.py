@@ -44,6 +44,7 @@ class StickyUITHOFBot(TeamsActivityHandler):
         session = db.Session()
         if not db.getFirst(session, db.MentorGroup, 'channel_id', channel_id):
             await turn_context.send_activity("You can only perform this command from a Mentorgroep channel")
+            session.close()
             return
 
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
@@ -81,13 +82,19 @@ class StickyUITHOFBot(TeamsActivityHandler):
         db_user = db.getUserOnType(session, 'mentor_user', helper.get_user_id(user))
         db_intro_user = db.getUserOnType(session, 'intro_user', helper.get_user_id(user))
 
+        mentor_group = db.getFirst(session, db.MentorGroup, 'mg_id', db_user.mg_id)
+        if mentor_group.occupied:
+            await turn_context("Je staat al in een queue!")
+            session.close()
+            return
+    
         #If exists in database...
         if (db_user or db_intro_user):
             # Check if command is correct
             try:
                 location_name = turn_context.activity.text.split()[1]
             except IndexError:
-                await turn_context.send_activity("Something went wrong obtaining the chosen location, please contact the bot owner")
+                await turn_context.send_activity("Iets ging fout met het krijgen van de locatie. Neem a.u.b contact op met de intro-commissie")
 
             location = db.getFirst(session, db.USPLocation, 'name', location_name)
 
@@ -95,19 +102,21 @@ class StickyUITHOFBot(TeamsActivityHandler):
             if not location.occupied:
                 # Immediately set it as occupied, then do the rest (to make it atomic)
                 location.occupied = True
+                mentor_group.occupied = True
                 db.dbMerge(session, location)
+                db.dbMerge(session, mentor_group)
                 # Get mentor group and create a visit.
-                mentor_group = db.getFirst(session, db.MentorGroup, 'mg_id', db_user.mg_id)
                 visit = db.USPVisit(mg_id=mentor_group.mg_id, location_id=location.location_id)
                 db.dbInsert(session, visit)
-                await turn_context.send_activity(f"The location '{location.name}' will be notified of your arrival!")
-                location_message = MessageFactory.text(f"The mentor group '{mentor_group.name}' wants to talk to you")
-                await helper.create_channel_conversation(turn_context, location.channel_id, location_message)
+                await turn_context.send_activity(f"Je staat in de wachtlijst van: '{location.name}'")
                 accept_button = await self.create_accept_button(mentor_group)
                 await helper.create_channel_conversation(turn_context, location.channel_id, accept_button)
             else:
-                #TODO: Update the card to the new available committees
-                await turn_context.send_activity("This committee is now occupied, please choose another committee to visit.")
+                mentor_group.occupation = True
+                db.dbMerge(session, mentor_group)
+                visit = db.USPVisit(mg_id=mentor_group.mg_id, location_id=location.location_id)
+                db.dbInsert(session, visit)
+                await turn_context.send_activity(f"Je staat in de wachtlijst van: '{location.name}'")
         else:
             await turn_context.send_activity(f"You are not a Mentor and thus not allowed to perform this command.")
         session.close()
@@ -122,7 +131,7 @@ class StickyUITHOFBot(TeamsActivityHandler):
                     CardAction(
                         type=ActionTypes.message_back,
                         title=f"Accept '{mentor_group.name}'",
-                        text=f"Accept {mentor_group.mg_id}",
+                        text=f"Accept {mentor_group.name}",
                     ),
                 ],
             )
@@ -130,12 +139,77 @@ class StickyUITHOFBot(TeamsActivityHandler):
         return MessageFactory.attachment(card)
 
     async def accept(self, turn_context: TurnContext):
-        pass
+        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+        session = db.Session()
+        db_user = db.getUserOnType(session, 'usp_user', helper.get_user_id(user))
+
+        # Check if command is correct
+        if db_user:
+            try:
+                mentor_group_name = turn_context.activity.text.split()[1]
+            except IndexError:
+                await turn_context.send_activity("Iets ging fout met het krijgen van de locatie. Neem a.u.b contact op met de intro-commissie")
+
+            mentor_group = db.getFirst(session, db.MentorGroup, 'name', mentor_group_name)
+
+            accept_message = MessageFactory.text(f"De locatie komt nu naar je toe")
+            await helper.create_channel_conversation(turn_context, mentor_group.channel_id, accept_message)
+            old_visit = db.getFirst(session, db.USPVisit, 'mg_id', mentor_group.mg_id)
+            if(old_visit):
+                old_mentor_group = db.getFirst(session, db.MentorGroup, 'mg_id', old_visit.mg_id)
+                location = old_visit.location_id
+                old_mentor_group.occupied = False
+                db.dbMerge(session, old_mentor_group)
+                session.delete(old_visit)
+                session.commit()
+                self.update_accept_card(TurnContext, location)
+            else:
+                await turn_context.send_activity("Ging iets fout met het verwijderen van de laatste visit")
+        else:
+            await turn_context.send_activity("Aleen usp helpers kunnen dit doen")
+        session.close()
+
+    async def update_accept_card(self, turn_context: TurnContext, location):
+        session = db.session()
+        
+        mentor_groups = db.getAll(session, db.Visit, 'location_id', location)
+
+        if len(mentor_groups) > 0:
+            card = CardFactory.hero_card(
+                HeroCard(
+                    title='Accept Mentor Group',
+                    text='A new group wants to join talk to you. '\
+                        'Push the accept button to notify that you are comming',
+                    buttons=[
+                        CardAction(
+                            type=ActionTypes.message_back,
+                            title=f"Accept '{mentor_groups[0].name}'",
+                            text=f"Accept {mentor_groups[0].name}",
+                        ),
+                    ],
+                )
+            )
+            session.close()
+            updated_card = MessageFactory.attachment(card)
+            updated_card.id = turn_context.activity.reply_to_id
+            await turn_context.update(updated_card)
+        else:
+            current_location =db.getFirst(session, db.USPLocation, 'location_id', location)
+            if(current_location):
+                current_location.occupied = False
+                db.dbMerge(session, current_location)
+                session.close()
+                updated_message = MessageFactory.attachment('Je hebt iedereen gehad')
+                updated_message.id = turn_context.activity.reply_to_id
+                await turn_context.update(updated_message)
+            else:
+                await turn_context.send_activity("Er is iets misgegaan met het updaten van de laatste entry")
+            
 
     async def release_location(self, turn_context: TurnContext):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         session = db.Session()
-        db_user = db.getUserOnType(session, 'usp_helper_user', helper.get_user_id(user))
+        db_user = db.getUserOnType(session, 'usp_user', helper.get_user_id(user))
 
         if db_user:
             location = db.getFirst(session, db.USPLocation, 'location_id', db_user.usp_id)

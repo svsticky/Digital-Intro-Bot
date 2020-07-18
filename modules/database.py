@@ -182,6 +182,12 @@ class Visit(SQLAlchemyBase):
     committee_id = sa.Column(sa.String(50), index=True)
     finished = sa.Column(sa.Boolean, default=False)
 
+class USPVisit(SQLAlchemyBase):
+    __tablename__ = 'usp_queue'
+    visit_id = sa.Column(sa.Integer, primary_key=True)
+    mg_id = sa.Column(sa.String(50))
+    location_id = sa.Column(sa.String(50), index=True)
+
 class Enrollment(SQLAlchemyBase):
     __tablename__ = 'enrollment'
     enroll_id = sa.Column(sa.Integer, primary_key=True)
