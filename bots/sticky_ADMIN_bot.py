@@ -196,6 +196,24 @@ class StickyADMINBot(TeamsActivityHandler):
                     init_message = MessageFactory.text(f"Dit kanaal is nu het ALFASkanaal voor Commissie: '{committee_name}'")
                     await helper.create_channel_conversation(turn_context, channel.id, init_message)
 
+            #Check if it is a "usp location" channel
+            if self.uithof_bot: # If the alfas bot is launched
+                if channel.name.startswith("USP"):
+                    #If so, add it to the database as a Commissie or update it.
+                    location_name = channel.name.split()[1]
+                    existing_location = db.getFirst(session, db.USPLocation, 'name', location_name)
+
+                    if not existing_location:
+                        location = db.USPLocation(name=location_name, info="", channel_id=channel.id)
+                        db.dbInsert(session, location)
+                    else:
+                        existing_location.channel_id = channel.id
+                        existing_location.name = location_name
+                        db.dbMerge(session, existing_location)
+                    # Notify the channel that it is now an USP channel
+                    init_message = MessageFactory.text(f"Dit kanaal is nu het USPkanaal voor locatie: '{location_name}'")
+                    await helper.create_channel_conversation(turn_context, channel.id, init_message)
+
         # Done with the channels
         await turn_context.send_activity("Alle groepen zijn geïnitialiseerd!")
 
@@ -243,7 +261,17 @@ class StickyADMINBot(TeamsActivityHandler):
                                                             committee_id=committee.committee_id)
                         else:
                             await turn_context.send_activity(f"De commissie voor '{matching_member.name}' bestaat niet!")
-
+            elif self.uithof_bot: # These are only added when the uithof bot is launched.
+                if row[3] == "USP":
+                    user = db.getUserOnType(session, 'usp_user', helper.get_user_id(matching_member))
+                    if not user:
+                        location = db.getFirst(session, db.USPLocation, 'name', row[4])
+                        if location:
+                            database_member = db.USPUser(user_teams_id=helper.get_user_id(matching_member),
+                                                            user_name=matching_member.name,
+                                                            location_id=location.location_id)
+                        else:
+                            await turn_context.send_activity(f"De locatie voor '{matching_member.name}' bestaat niet!")
             # Insert if a database_member is created (this is not the case if the user already exists in the database).
             if database_member is not None:
                 db.dbInsert(session, database_member)

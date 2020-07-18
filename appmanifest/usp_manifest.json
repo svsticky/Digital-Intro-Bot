@@ -1,0 +1,58 @@
+{
+    "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.5/MicrosoftTeams.schema.json",
+    "manifestVersion": "1.5",
+    "version": "1.0.0",
+    "id": "e99e2c6f-69d9-4bb4-aa5e-52d2d5df0fbf",
+    "packageName": "com.teams.sample.uithofbot",
+    "developer": {
+      "name": "uithofbot",
+      "websiteUrl": "https://www.microsoft.com",
+      "privacyUrl": "https://www.teams.com/privacy",
+      "termsOfUseUrl": "https://www.teams.com/termsofuser"
+    },
+    "icons": {
+      "outline": "icon-outline.png",
+      "color": "icon-color.png"
+    },
+    "name": {
+      "short": "uithofbot",
+      "full": "Utrecht Science Park bot"
+    },
+    "description": {
+      "short": "Bot used by the USP in the svsticky introduction period",
+      "full": "Bot used by the USP in the svsticky introduction period"
+    },
+    "accentColor": "#FFFFFF",
+    "bots": [
+      {
+        "botId": "e99e2c6f-69d9-4bb4-aa5e-52d2d5df0fbf",
+        "scopes": [
+          "personal",
+          "groupchat",
+          "team"
+        ],
+        "supportsFiles": true,
+        "isNotificationOnly": false,
+        "commandLists": [
+          {
+            "scopes": [
+              "personal",
+              "groupchat",
+              "team"
+            ],
+            "commands": [
+              {
+                "title": "BeschikbareLocaties",
+                "description": "Laat alle beschikbare locaties zien."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "permissions": [
+      "identity",
+      "messageTeamMembers"
+    ],
+    "validDomains": []
+  }

@@ -116,6 +116,14 @@ class CommitteeUser(User):
         'polymorphic_identity':'committee_user',
     }
 
+class USPUser(User):
+    __tablename__ = 'usp_user'
+    user_id = sa.Column(sa.Integer, sa.ForeignKey('user.user_id'), primary_key=True, unique=True)
+    location_id = sa.Column(sa.Integer, sa.ForeignKey('usp_location.location_id'))
+
+    __mapper_args__ = {
+        'polymorphic_identity':'usp_user',
+    }
 
 class MentorUser(User):
     __tablename__ = 'mentor_user'
@@ -158,6 +166,14 @@ class MentorGroup(SQLAlchemyBase):
     for association in _config.ASSOCIATIONS:
         exec(f'{association}_timeslot = sa.Column(sa.String(50))')
 
+class USPLocation(SQLAlchemyBase):
+    __tablename__ = 'usp_location'
+    location_id = sa.Column(sa.Integer, primary_key=True)
+    name = sa.Column(sa.String(50), unique=True)
+    info = sa.Column(sa.String(50))
+    channel_id = sa.Column(sa.String(50), index=True)
+    members = relationship("USPUser")
+    occupied = sa.Column(sa.Boolean, default=False)
 
 class Visit(SQLAlchemyBase):
     __tablename__ = 'visit'
