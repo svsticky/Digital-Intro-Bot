@@ -173,7 +173,7 @@ class StickyUITHOFBot(TeamsActivityHandler):
         
         mentor_groups = db.getAll(session, db.USPVisit, 'location_id', location)
 
-        if len(mentor_groups) > 0:
+        if mentor_groups:
             card = CardFactory.hero_card(
                 HeroCard(
                     title='Accept Mentor Group',
@@ -193,7 +193,7 @@ class StickyUITHOFBot(TeamsActivityHandler):
             updated_card.id = turn_context.activity.reply_to_id
             await turn_context.update_activity(updated_card)
         else:
-            current_location =db.getFirst(session, db.USPLocation, 'location_id', location)
+            current_location = db.getFirst(session, db.USPLocation, 'location_id', location)
             if(current_location):
                 current_location.occupied = False
                 db.dbMerge(session, current_location)
