@@ -15,14 +15,13 @@ from google_api import GoogleSheet
 
 
 class StickyADMINBot(TeamsActivityHandler):
-    def __init__(self, app_id: str, app_password: str, alfas, c88, uithof):
+    def __init__(self, app_id: str, app_password: str, alfas, uithof):
         self._app_id = app_id
         self._app_password = app_password
         self.CONFIG = DefaultConfig()
         self.scheduler = AsyncIOScheduler(timezone=self.CONFIG.TIME_ZONE)
         self.jobs = [] # Holds channel ids of mentor groups for which a job is already created.
         self.alfas_bot = alfas # alfas bot object
-        self.c88_bot = c88 # c88 bot object
         self.uithof_bot = uithof # uithof bot object
 
     async def on_teams_members_added(self, teams_members_added: [TeamsChannelAccount],
@@ -128,10 +127,6 @@ class StickyADMINBot(TeamsActivityHandler):
         if self.alfas_bot: # only needs to be done when the alfas bot is launched.
             await self.init_timeslots(turn_context, session)
 
-        # Fetch questions for crazy 88
-        if self.c88_bot: # only needs to be done when de c88 bot is launched.
-            await self.fetch_crazy88_questions(turn_context, session)
-
         session.close()
         #Feedback to user.
         await turn_context.send_activity("De bot is geïnitialiseerd!")
@@ -159,16 +154,7 @@ class StickyADMINBot(TeamsActivityHandler):
                     # Create mentor group
                     mentor_group = db.MentorGroup(name=group_name, channel_id=channel.id)
                     db.dbInsert(session, mentor_group)
-                    # Create crazy 88 progress for this group
-                    if self.c88_bot: # if the c88_bot is launched
-                        crazy88_group = db.Crazy88Progress(mg_id=channel.id)
-                        db.dbInsert(session, crazy88_group)
                 else:
-                    # Update Crazy88 progress
-                    if self.c88_bot: # if the c88_bot is launched
-                        existing_c88_progress = db.getFirst(session, db.Crazy88Progress, 'mg_id', existing_mentor_group.channel_id)
-                        existing_c88_progress.mg_id = channel.id
-                        db.dbMerge(session, existing_c88_progress)
                     # Update mentor group data
                     existing_mentor_group.channel_id = channel.id
                     existing_mentor_group.name = group_name
@@ -295,25 +281,6 @@ class StickyADMINBot(TeamsActivityHandler):
         if not self.scheduler.running:
             self.scheduler.start()
         await turn_context.send_activity("Alle tijdsloten zijn toegevoegd!")
-
-    async def fetch_crazy88_questions(self, turn_context: TurnContext, session):
-        # Obtain questions from Google sheets 
-        await turn_context.send_activity("Gestart met het ophalen van alle Crazy88-opdrachten...")
-        sheet_values = GoogleSheet().get_questions()
-
-        for i, q in enumerate(sheet_values):
-            question = db.getFirst(session, db.Questions, 'opdr', i+1)
-            q = q[0]
-            if not question:
-                new_question = db.Questions(opdr=i+1, question=q)
-                db.dbInsert(session, new_question)
-            else:
-                question.question = q
-                db.dbMerge(session, question)
-                
-        await turn_context.send_activity("Alle Crazy88-opdrachten zijn opgehaald!")
-    
-    ### Methods to add users and groups separately to the bot!!!
 
     # Function to start adding a seperate committee. Expects argument: committee_name
     async def add_committee(self, turn_context: TurnContext):
@@ -533,8 +500,6 @@ class StickyADMINBot(TeamsActivityHandler):
         
         if bot == 'alfas' and self.alfas_bot:
             self.alfas_bot.unlocked = True
-        elif bot == 'c88' and self.c88_bot:
-            self.c88_bot.unlocked = True
         elif bot == 'uithof' and self.uithof_bot:
             self.uithof_bot.unlocked = True
         else:
@@ -552,8 +517,6 @@ class StickyADMINBot(TeamsActivityHandler):
         
         if bot == 'alfas' and self.alfas_bot:
             self.alfas_bot.unlocked = False
-        elif bot == 'c88' and self.c88_bot:
-            self.c88_bot.unlocked = False
         elif bot == 'uithof' and self.uithof_bot:
             self.uithof_bot.unlocked = False
         else:

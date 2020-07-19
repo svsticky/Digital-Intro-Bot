@@ -14,7 +14,7 @@ from botbuilder.core import (
 from botbuilder.core.integration import aiohttp_error_middleware
 from botbuilder.schema import Activity, ActivityTypes
 
-from bots import StickyALFASBot, StickyC88Bot, StickyUITHOFBot, StickyADMINBot
+from bots import StickyALFASBot, StickyUITHOFBot, StickyADMINBot
 from config import DefaultConfig
 
 
@@ -46,7 +46,7 @@ async def on_error(context: TurnContext, error: Exception):
         await context.send_activity(trace_activity)
 
 CONFIG = DefaultConfig()
-BOTS = BOTS_CHECK = ['ALFAS', 'C88', 'UITHOF']
+BOTS = BOTS_CHECK = ['ALFAS', 'UITHOF']
 
 if sys.argv[1:]:
     BOTS = sys.argv[1:]
@@ -76,7 +76,6 @@ ADMIN_ADAPTER.on_turn_error = on_error
 ADMIN_APP_ID = ADMIN_SETTINGS.app_id if ADMIN_SETTINGS.app_id else uuid.uuid4()
 ADMIN_BOT = StickyADMINBot(CONFIG.ADMIN_APP_ID, CONFIG.ADMIN_APP_PASSWORD,
                            ALFAS_BOT,
-                           C88_BOT,
                            UITHOF_BOT)
 
 APP = web.Application(middlewares=[aiohttp_error_middleware])
@@ -96,8 +95,6 @@ async def messages(req: Request) -> Response:
 
     if bot_id == CONFIG.ALFAS_APP_ID:
         response = await ALFAS_ADAPTER.process_activity(activity, auth_header, ALFAS_BOT.on_turn)
-    elif bot_id == CONFIG.C88_APP_ID:
-        response = await C88_ADAPTER.process_activity(activity, auth_header, C88_BOT.on_turn)
     elif bot_id == CONFIG.UITHOF_APP_ID:
         response = await UITHOF_ADAPTER.process_activity(activity, auth_header, UITHOF_BOT.on_turn)
     elif bot_id == CONFIG.ADMIN_APP_ID:
@@ -109,8 +106,6 @@ async def messages(req: Request) -> Response:
 
 if ALFAS_BOT:
     APP.router.add_post("/api/alfas/messages", messages)
-if C88_BOT:
-    APP.router.add_post("/api/c88/messages", messages)
 if UITHOF_BOT:
     APP.router.add_post("/api/uithof/messages", messages)
 APP.router.add_post("/api/admin/messages", messages)
