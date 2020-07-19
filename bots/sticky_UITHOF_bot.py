@@ -56,7 +56,7 @@ class StickyUITHOFBot(TeamsActivityHandler):
             session.close()
             return
 
-        locations = db.getAll(session, db.USPLocation, 'occupied', False)
+        locations = session.query(db.USPLocation).all()
 
         card = CardFactory.hero_card(
             HeroCard(
@@ -80,21 +80,20 @@ class StickyUITHOFBot(TeamsActivityHandler):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         session = db.Session()
         db_user = db.getUserOnType(session, 'mentor_user', helper.get_user_id(user))
-        db_intro_user = db.getUserOnType(session, 'intro_user', helper.get_user_id(user))
-
-        mentor_group = db.getFirst(session, db.MentorGroup, 'mg_id', db_user.mg_id)
-        if mentor_group.occupied:
-            await turn_context("Je staat al in een queue!")
-            session.close()
-            return
     
         #If exists in database...
-        if (db_user or db_intro_user):
+        if db_user:
             # Check if command is correct
             try:
                 location_name = turn_context.activity.text.split()[1]
             except IndexError:
                 await turn_context.send_activity("Iets ging fout met het krijgen van de locatie. Neem a.u.b contact op met de intro-commissie")
+
+            mentor_group = db.getFirst(session, db.MentorGroup, 'mg_id', db_user.mg_id)
+            if mentor_group.occupied:
+                await turn_context.send_activity("Je staat al in een queue!")
+                session.close()
+                return
 
             location = db.getFirst(session, db.USPLocation, 'name', location_name)
 
@@ -150,19 +149,22 @@ class StickyUITHOFBot(TeamsActivityHandler):
             except IndexError:
                 await turn_context.send_activity("Iets ging fout met het krijgen van de locatie. Neem a.u.b contact op met de intro-commissie")
 
-            mentor_group = db.getFirst(session, db.MentorGroup, 'name', mentor_group_name)
+            print(session.query(db.USPVisit).all())
 
-            accept_message = MessageFactory.text(f"De locatie komt nu naar je toe")
-            await helper.create_channel_conversation(turn_context, mentor_group.channel_id, accept_message)
+            mentor_group = db.getFirst(session, db.MentorGroup, 'name', mentor_group_name)
             old_visit = db.getFirst(session, db.USPVisit, 'mg_id', mentor_group.mg_id)
             if(old_visit):
+                accept_message = MessageFactory.text(f"De locatie komt nu naar je toe")
+                await helper.create_channel_conversation(turn_context, mentor_group.channel_id, accept_message)
+                await turn_context.send_activity(f"Je kan nu naar mentorgroep: {mentor_group_name} gaan")
+
                 old_mentor_group = db.getFirst(session, db.MentorGroup, 'mg_id', old_visit.mg_id)
                 location = old_visit.location_id
                 old_mentor_group.occupied = False
                 db.dbMerge(session, old_mentor_group)
                 session.delete(old_visit)
                 session.commit()
-                self.update_accept_card(TurnContext, location)
+                await self.update_accept_card(TurnContext, location)
             else:
                 await turn_context.send_activity("Ging iets fout met het verwijderen van de laatste visit")
         else:
@@ -170,9 +172,9 @@ class StickyUITHOFBot(TeamsActivityHandler):
         session.close()
 
     async def update_accept_card(self, turn_context: TurnContext, location):
-        session = db.session()
+        session = db.Session()
         
-        mentor_groups = db.getAll(session, db.Visit, 'location_id', location)
+        mentor_groups = db.getAll(session, db.USPVisit, 'location_id', location)
 
         if len(mentor_groups) > 0:
             card = CardFactory.hero_card(
