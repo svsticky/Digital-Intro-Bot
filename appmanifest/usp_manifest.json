@@ -5,7 +5,7 @@
     "id": "e99e2c6f-69d9-4bb4-aa5e-52d2d5df0fbf",
     "packageName": "com.teams.sample.uithofbot",
     "developer": {
-      "name": "uithofbot",
+      "name": "UITHOFbot",
       "websiteUrl": "https://www.microsoft.com",
       "privacyUrl": "https://www.teams.com/privacy",
       "termsOfUseUrl": "https://www.teams.com/termsofuser"
@@ -15,7 +15,7 @@
       "color": "icon-color.png"
     },
     "name": {
-      "short": "uithofbot",
+      "short": "UITHOFbot",
       "full": "Utrecht Science Park bot"
     },
     "description": {
