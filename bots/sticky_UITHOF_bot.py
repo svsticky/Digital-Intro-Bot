@@ -48,7 +48,6 @@ class StickyUITHOFBot(TeamsActivityHandler):
             return
 
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
-        print(user)
         mentor_db_user = db.getUserOnType(session, 'mentor_user', helper.get_user_id(user))
         intro_db_user = db.getUserOnType(session, 'intro_user', helper.get_user_id(user))
         if (not mentor_db_user and not intro_db_user):
@@ -149,8 +148,6 @@ class StickyUITHOFBot(TeamsActivityHandler):
             except IndexError:
                 await turn_context.send_activity("Iets ging fout met het krijgen van de locatie. Neem a.u.b contact op met de intro-commissie")
 
-            print(session.query(db.USPVisit).all())
-
             mentor_group = db.getFirst(session, db.MentorGroup, 'name', mentor_group_name)
             old_visit = db.getFirst(session, db.USPVisit, 'mg_id', mentor_group.mg_id)
             if(old_visit):
@@ -164,7 +161,7 @@ class StickyUITHOFBot(TeamsActivityHandler):
                 db.dbMerge(session, old_mentor_group)
                 session.delete(old_visit)
                 session.commit()
-                await self.update_accept_card(TurnContext, location)
+                await self.update_accept_card(turn_context, location)
             else:
                 await turn_context.send_activity("Ging iets fout met het verwijderen van de laatste visit")
         else:
@@ -194,16 +191,16 @@ class StickyUITHOFBot(TeamsActivityHandler):
             session.close()
             updated_card = MessageFactory.attachment(card)
             updated_card.id = turn_context.activity.reply_to_id
-            await turn_context.update(updated_card)
+            await turn_context.update_activity(updated_card)
         else:
             current_location =db.getFirst(session, db.USPLocation, 'location_id', location)
             if(current_location):
                 current_location.occupied = False
                 db.dbMerge(session, current_location)
                 session.close()
-                updated_message = MessageFactory.attachment('Je hebt iedereen gehad')
+                updated_message = MessageFactory.text('Je hebt iedereen gehad')
                 updated_message.id = turn_context.activity.reply_to_id
-                await turn_context.update(updated_message)
+                await turn_context.update_activity(updated_message)
             else:
                 await turn_context.send_activity("Er is iets misgegaan met het updaten van de laatste entry")
             
