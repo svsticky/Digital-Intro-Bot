@@ -488,6 +488,10 @@ class StickyADMINBot(TeamsActivityHandler):
                 committee_user = db.getUserOnType(session, 'committee_user', user.user_teams_id)
                 committee = db.getFirst(session, db.Committee, 'committee_id', committee_user.committee_id)
                 return_string += f'- Commissielid voor {committee.name}   \n'
+            elif user.user_type == "usp_user":
+                location_user = db.getUserOnType(session, 'usp_user', user.user_teams_id)
+                location = db.getFirst(session, db.USPLocation, 'location_id', location_user.location_id)
+                return_string += f'- USP helper voor {location.name}    \n'
         session.close()
         await turn_context.send_activity(return_string)
 
