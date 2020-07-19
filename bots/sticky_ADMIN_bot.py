@@ -140,7 +140,6 @@ class StickyADMINBot(TeamsActivityHandler):
 
     async def init_channels(self, turn_context: TurnContext, session):
         await turn_context.send_activity("Gestart met het initialiseren van groepen gebasseerd op Teamskanalen...")
-        added_groups = ""
 
         # Get all channels of the team
         channels = await TeamsInfo.get_team_channels(turn_context)
