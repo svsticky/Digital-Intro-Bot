@@ -175,7 +175,7 @@ class StickyADMINBot(TeamsActivityHandler):
                     existing_mentor_group.name = group_name
                     db.dbMerge(session, existing_mentor_group)
                 # Notify the channel that it is now an ALFAS channel
-                init_message = MessageFactory.text(f"Dit kanaal is nu het ALFASkanaal en USPkanaal voor Mentorgroep: '{group_name}'")
+                init_message = MessageFactory.text(f"Dit kanaal is nu het ALFASkanaal voor Mentorgroep: '{group_name}'")
                 await helper.create_channel_conversation(turn_context, channel.id, init_message)
 
             #Check if it is a "Commissie" channel

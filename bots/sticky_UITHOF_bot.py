@@ -203,19 +203,3 @@ class StickyUITHOFBot(TeamsActivityHandler):
                 await turn_context.update_activity(updated_message)
             else:
                 await turn_context.send_activity("Er is iets misgegaan met het updaten van de laatste entry")
-            
-
-    async def release_location(self, turn_context: TurnContext):
-        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
-        session = db.Session()
-        db_user = db.getUserOnType(session, 'usp_user', helper.get_user_id(user))
-
-        if db_user:
-            location = db.getFirst(session, db.USPLocation, 'location_id', db_user.usp_id)
-            location.occupied = False
-            db.dbMerge(session, location)
-            release_message = MessageFactory.text("This location has now been freed from occupation. Expect a new request soon!")
-            await helper.create_channel_conversation(turn_context, location.channel_id, release_message)
-        else:
-            await turn_context.send_activity("You are not allowed to perform this command.")
-        session.close()
