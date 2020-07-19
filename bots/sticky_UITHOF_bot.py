@@ -15,7 +15,7 @@ class StickyUITHOFBot(TeamsActivityHandler):
 
     async def on_message_activity(self, turn_context: TurnContext):
         if not self.unlocked:
-            await turn_context.send_activity("The bot is locked and can thus not be used. Try again later or ask the bot admin to unlock the bot.")
+            await turn_context.send_activity("De bot is geblokkeerd en kan dus niet gebruikt worden. Probeer later opnieuw of vraag een admin om de bot vrij te geven.")
             return
             
         TurnContext.remove_recipient_mention(turn_context.activity)
@@ -36,14 +36,14 @@ class StickyUITHOFBot(TeamsActivityHandler):
             await self.choose_location(turn_context)
             return
 
-        await turn_context.send_activity("You provided a non valid command, maybe you made a typo?")
+        await turn_context.send_activity("We kennen dit commando niet. Misschien een typo?")
         return
 
     async def available_locations(self, turn_context: TurnContext):
         channel_id = turn_context.activity.channel_data['teamsChannelId']
         session = db.Session()
         if not db.getFirst(session, db.MentorGroup, 'channel_id', channel_id):
-            await turn_context.send_activity("You can only perform this command from a Mentorgroep channel")
+            await turn_context.send_activity("Dit kan alleen gedaan worden vanuit een mentorgroep kanaal")
             session.close()
             return
 
@@ -116,19 +116,19 @@ class StickyUITHOFBot(TeamsActivityHandler):
                 db.dbInsert(session, visit)
                 await turn_context.send_activity(f"Je staat in de wachtlijst van: '{location.name}'")
         else:
-            await turn_context.send_activity(f"You are not a Mentor and thus not allowed to perform this command.")
+            await turn_context.send_activity(f"Alleen een mentor mag dit uitvoeren.")
         session.close()
 
     async def create_accept_button(self, mentor_group):
         card = CardFactory.hero_card(
             HeroCard(
-                title='Accept Mentor Group',
-                text='A new group wants to join talk to you. '\
-                     'Push the accept button to notify that you are comming',
+                title='Accepteer mentorgroep',
+                text='Een nieuwe mentorgroep wilt met je praten. '\
+                     'Druk op de knop met de mentorgroep naam om aan te geven dat je eraan komt.',
                 buttons=[
                     CardAction(
                         type=ActionTypes.message_back,
-                        title=f"Accept '{mentor_group.name}'",
+                        title=f"Accepteer mentorgroep: '{mentor_group.name}'",
                         text=f"Accept {mentor_group.name}",
                     ),
                 ],
@@ -176,13 +176,13 @@ class StickyUITHOFBot(TeamsActivityHandler):
         if mentor_groups:
             card = CardFactory.hero_card(
                 HeroCard(
-                    title='Accept Mentor Group',
-                    text='A new group wants to join talk to you. '\
-                        'Push the accept button to notify that you are comming',
+                    title='Accepteer de mentorgroep',
+                    text='Een nieuwe mentorgroep wilt met je praten. '\
+                        'Druk op de knop met de mentorgroep naam om aan te geven dat je eraan komt.',
                     buttons=[
                         CardAction(
                             type=ActionTypes.message_back,
-                            title=f"Accept '{mentor_groups[0].name}'",
+                            title=f"Accepteer mentorgroep: '{mentor_groups[0].name}'",
                             text=f"Accept {mentor_groups[0].name}",
                         ),
                     ],
@@ -198,8 +198,6 @@ class StickyUITHOFBot(TeamsActivityHandler):
                 current_location.occupied = False
                 db.dbMerge(session, current_location)
                 session.close()
-                updated_message = MessageFactory.text('Je hebt iedereen gehad')
-                updated_message.id = turn_context.activity.reply_to_id
-                await turn_context.update_activity(updated_message)
+                await turn_context.delete_activity(turn_context.activity.reply_to_id)
             else:
                 await turn_context.send_activity("Er is iets misgegaan met het updaten van de laatste entry")
