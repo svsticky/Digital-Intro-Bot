@@ -182,11 +182,6 @@ class Enrollment(SQLAlchemyBase):
     email_address = sa.Column(sa.String(50))
     __table_args__ = (sa.UniqueConstraint('committee_id', 'email_address', name='_id_email_uc'),)
 
-class Questions(SQLAlchemyBase):
-    __tablename__ = 'questions'
-    opdr = sa.Column(sa.String(5), primary_key=True) # References to each opdrX column in crazy88_progress
-    question = sa.Column(sa.String(150))
-
 
 @event.listens_for(User, 'mapper_configured')
 def receive_mapper_configured(mapper, class_):
