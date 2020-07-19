@@ -250,28 +250,26 @@ class StickyADMINBot(TeamsActivityHandler):
                                                         mg_id=mentor_group.mg_id)
                     else:
                         await turn_context.send_activity(f"De mentorgroep voor '{matching_member.name} bestaat niet!")
-            elif self.alfas_bot: # These are only added when the alfas bot is launched.
-                if row[3] == "Commissie":
-                    user = db.getUserOnType(session, 'committee_user', helper.get_user_id(matching_member))
-                    if not user:
-                        committee = db.getFirst(session, db.Committee, 'name', row[4])
-                        if committee:
-                            database_member = db.CommitteeUser(user_teams_id=helper.get_user_id(matching_member),
-                                                            user_name=matching_member.name,
-                                                            committee_id=committee.committee_id)
-                        else:
-                            await turn_context.send_activity(f"De commissie voor '{matching_member.name}' bestaat niet!")
-            elif self.uithof_bot: # These are only added when the uithof bot is launched.
-                if row[3] == "USP":
-                    user = db.getUserOnType(session, 'usp_user', helper.get_user_id(matching_member))
-                    if not user:
-                        location = db.getFirst(session, db.USPLocation, 'name', row[4])
-                        if location:
-                            database_member = db.USPUser(user_teams_id=helper.get_user_id(matching_member),
-                                                            user_name=matching_member.name,
-                                                            location_id=location.location_id)
-                        else:
-                            await turn_context.send_activity(f"De locatie voor '{matching_member.name}' bestaat niet!")
+            elif self.alfas_bot and row[3] == "Commissie": # These are only added when the alfas bot is launched.
+                user = db.getUserOnType(session, 'committee_user', helper.get_user_id(matching_member))
+                if not user:
+                    committee = db.getFirst(session, db.Committee, 'name', row[4])
+                    if committee:
+                        database_member = db.CommitteeUser(user_teams_id=helper.get_user_id(matching_member),
+                                                        user_name=matching_member.name,
+                                                        committee_id=committee.committee_id)
+                    else:
+                        await turn_context.send_activity(f"De commissie voor '{matching_member.name}' bestaat niet!")
+            elif self.uithof_bot and row[3] == "USP": # These are only added when the uithof bot is launched.
+                user = db.getUserOnType(session, 'usp_user', helper.get_user_id(matching_member))
+                if not user:
+                    location = db.getFirst(session, db.USPLocation, 'name', row[4])
+                    if location:
+                        database_member = db.USPUser(user_teams_id=helper.get_user_id(matching_member),
+                                                    user_name=matching_member.name,
+                                                    location_id=location.location_id)
+                    else:
+                        await turn_context.send_activity(f"De locatie voor '{matching_member.name}' bestaat niet!")
             # Insert if a database_member is created (this is not the case if the user already exists in the database).
             if database_member is not None:
                 db.dbInsert(session, database_member)
