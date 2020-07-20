@@ -151,17 +151,18 @@ class StickyUITHOFBot(TeamsActivityHandler):
             mentor_group = db.getFirst(session, db.MentorGroup, 'name', mentor_group_name)
             old_visit = db.getFirst(session, db.USPVisit, 'mg_id', mentor_group.mg_id)
             if(old_visit):
-                accept_message = MessageFactory.text(f"De locatie komt nu naar je toe")
+                location = db.getFirst(session, db.USPLocation, 'location_id', old_visit.location_id)
+                accept_message = MessageFactory.text(f"{location.name} komt nu naar je toe")
                 await helper.create_channel_conversation(turn_context, mentor_group.channel_id, accept_message)
                 await turn_context.send_activity(f"Je kan nu naar mentorgroep: {mentor_group_name} gaan")
 
                 old_mentor_group = db.getFirst(session, db.MentorGroup, 'mg_id', old_visit.mg_id)
-                location = old_visit.location_id
+                location_id = old_visit.location_id
                 old_mentor_group.occupied = False
                 db.dbMerge(session, old_mentor_group)
                 session.delete(old_visit)
                 session.commit()
-                await self.update_accept_card(turn_context, location)
+                await self.update_accept_card(turn_context, location_id)
             else:
                 await turn_context.send_activity("Ging iets fout met het verwijderen van de laatste visit")
         else:
