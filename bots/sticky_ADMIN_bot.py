@@ -93,14 +93,29 @@ class StickyADMINBot(TeamsActivityHandler):
                 await turn_context.send_activity("Dit commando is niet actief omdat de bijbehorende bot niet draait.")
             return
 
+        # Add a mentor group
+        if turn_context.activity.text.startswith("MentorgroepToevoegen"):
+            await self.add_mentor_group(turn_context)
+            return
+
         # Follow-up registering of a mentor group
         if turn_context.activity.text.startswith("RegMentorGroup"):
             await self.register_mentor_group(turn_context)
             return
+        
+        if turn_context.activity.text.startswith("USPlocatieToevoegen"):
+            if self.uithof_bot:
+                await self.add_USP_location(turn_context)
+            else:
+                await turn_context.send_activity("Dit commando is niet actief omdat de bijbehorende bot niet draait.")
+            return
 
-        # Add a mentor group
-        if turn_context.activity.text.startswith("MentorgroepToevoegen"):
-            await self.add_mentor_group(turn_context)
+        # Follow-up registering of a committee
+        if turn_context.activity.text.startswith("RegUSPLocation"):
+            if self.uithof_bot:
+                await self.register_USP_location(turn_context)
+            else:
+                await turn_context.send_activity("Dit commando is niet actief omdat de bijbehorende bot niet draait.")
             return
         
         if turn_context.activity.text.startswith("Activeer"): #followed by one of ['alfas', 'c88', 'uithof']
@@ -301,7 +316,7 @@ class StickyADMINBot(TeamsActivityHandler):
                         type=ActionTypes.message_back,
                         title=channel.name,
                         text=f"RegCommittee {channel.id} {committee_name}"
-                    ) for channel in channels if channel.name is not None
+                    ) for channel in channels if channel.name is not None and channel.name.startswith('Commissie')
                 ],
             ),
         )
@@ -350,7 +365,7 @@ class StickyADMINBot(TeamsActivityHandler):
                         type=ActionTypes.message_back,
                         title=channel.name,
                         text=f'RegMentorGroup {channel.id} {mentor_group_name}'
-                    ) for channel in channels if channel.name is not None
+                    ) for channel in channels if channel.name is not None and channel.name.startswith('Mentorgroep')
                 ],
             ),
         )
@@ -376,6 +391,52 @@ class StickyADMINBot(TeamsActivityHandler):
             mentor_group = db.MentorGroup(name=mentor_group_name, channel_id=channel_id)
             db.dbInsert(session, mentor_group)
         await turn_context.send_activity(f"Mentorgroep '{mentor_group_name}' is succesvol toegevoegd!")
+        session.close()
+    
+    # Function that starts adding a separate USP location.
+    async def add_USP_location(self, turn_context: TurnContext):
+        try:
+            USP_location_name = turn_context.activity.text.split()[1]
+        except IndexError:
+            await turn_context.send_activity("Je moet de naam van de commissie aan de bot meegeven: USPlocatieToevoegen <naam>")
+            return
+        channels = await TeamsInfo.get_team_channels(turn_context)
+        # Again send a card with all channels to choose the corresponding one.
+        card = CardFactory.hero_card(
+            HeroCard(
+                title="USPkanaal",
+                text="Kies het kanaal waar deze USP locatie aan gelinkt moet worden.",
+                buttons=[
+                    CardAction(
+                        type=ActionTypes.message_back,
+                        title=channel.name,
+                        text=f'RegUSPLocation {channel.id} {USP_location_name}'
+                    ) for channel in channels if channel.name is not None and channel.name.startswith('USP')
+                ],
+            ),
+        )
+        await turn_context.send_activity(MessageFactory.attachment(card))
+
+    # This function handles the choice of a channel for a USP location.
+    async def register_USP_location(self, turn_context: TurnContext):
+        command_info = turn_context.activity.text.split()
+
+        try:
+            USP_location_name = command_info[2]
+            channel_id = command_info[1]
+        except IndexError:
+            await turn_context.send_activity("Iets ging intern mis bij de bot. Contacteer iemand van de introductiecommissie.")
+            return
+
+        session = db.Session()
+        existing_USP_location = db.getFirst(session, db.USPLocation, 'name', USP_location_name)
+        if existing_USP_location:
+            existing_USP_location.channel_id = channel_id
+            db.dbMerge(session, existing_USP_location)
+        else:
+            USP_location = db.USPLocation(name=USP_location_name, channel_id=channel_id)
+            db.dbInsert(session, USP_location)
+        await turn_context.send_activity(f"USP locatie '{USP_location_name}' is succesvol toegevoegd!")
         session.close()
 
     async def register_intro(self, turn_context: TurnContext):
