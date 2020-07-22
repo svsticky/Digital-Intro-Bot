@@ -59,7 +59,7 @@ class StickyALFASBot(TeamsActivityHandler):
             await self.release_committee(turn_context)
             return
         
-        if turn_context.activity.text == "VerenigingsPlanning":
+        if turn_context.activity.text == "Inschrijfbalie":
             await self.association_planning(turn_context)
             return
         
