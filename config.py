@@ -37,6 +37,6 @@ class DefaultConfig:
 
     ASSOCIATIONS = ["Sticky", "Aeskwadraat"]
 
-    ALFAS_DATE = datetime.date(2020, 9, 3) # year, month, day
+    ALFAS_DATE = datetime.date(2020, 7, 26) # year, month, day
 
     TIME_ZONE = os.getenv("TimeZone")

@@ -5,7 +5,6 @@ from botbuilder.core import CardFactory, TurnContext, MessageFactory
 from botbuilder.core.teams import TeamsActivityHandler, TeamsInfo
 from botbuilder.schema import CardAction, HeroCard, Mention, ConversationParameters
 from botbuilder.schema.teams import TeamsChannelAccount
-from typing import List
 from botbuilder.schema._connector_client_enums import ActionTypes
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import modules.database as db
@@ -19,10 +18,9 @@ class StickyADMINBot(TeamsActivityHandler):
         self._app_id = app_id
         self._app_password = app_password
         self.CONFIG = DefaultConfig()
-        self.scheduler = AsyncIOScheduler(timezone=self.CONFIG.TIME_ZONE)
-        self.jobs = [] # Holds channel ids of mentor groups for which a job is already created.
         self.alfas_bot = alfas # alfas bot object
         self.uithof_bot = uithof # uithof bot object
+        self.just_booted = True
 
     async def on_teams_members_added(self, teams_members_added: [TeamsChannelAccount],
         team_info: TeamsInfo, turn_context: TurnContext
@@ -75,6 +73,12 @@ class StickyADMINBot(TeamsActivityHandler):
         # Fully initialize bot (we might want to add separate inits)
         if turn_context.activity.text == "Initialiseren":
             await self.initialize(turn_context)
+            return
+        
+        if turn_context.activity.text == "HerstartScheduler":
+            session = db.Session()
+            await self.restart_scheduler(turn_context, session)
+            session.close()
             return
         
         # Add a committee        
@@ -284,18 +288,42 @@ class StickyADMINBot(TeamsActivityHandler):
         for row in sheet_values[1:]:
             mentor_group = db.getFirst(session, db.MentorGroup, 'name', row[0])
             for idx, association in enumerate(self.CONFIG.ASSOCIATIONS):
-                setattr(mentor_group, f'{association}_timeslot', row[idx+1])
+                try:
+                    time_hours = int(row[idx+1].split(':')[0])
+                    time_minutes = int(row[idx+1].split(':')[1])
+                except ValueError:
+                    await turn_context.send_activity("De tijdsloten in de google sheet zijn niet goed geformateerd.")
+                    return
+                setattr(mentor_group, f'{association}_timeslot', datetime.time(time_hours, time_minutes, 0, 0))
             db.dbMerge(session, mentor_group)
-            if mentor_group.channel_id in self.jobs:
-                continue
-            else:
-                for idx, association in enumerate(self.CONFIG.ASSOCIATIONS):
-                    self.create_job(turn_context, mentor_group.channel_id, row[idx+1], association)
-                self.jobs.append(mentor_group.channel_id)
+           
+            for idx, association in enumerate(self.CONFIG.ASSOCIATIONS):
+                result_jobs = self.create_job(turn_context, mentor_group.channel_id, row[idx+1], association)
+                if association in self.alfas_bot.jobs.keys():
+                    self.alfas_bot.jobs[association].extend(result_jobs)
+                else:
+                    self.alfas_bot.jobs.update({association: result_jobs})
 
-        if not self.scheduler.running:
-            self.scheduler.start()
+        if not self.alfas_bot.scheduler.running:
+            self.alfas_bot.scheduler.start()
         await turn_context.send_activity("Alle tijdsloten zijn toegevoegd!")
+    
+    async def restart_scheduler(self, turn_context, session):
+        mentor_groups = db.getTable(session, db.MentorGroup)
+
+        for mentor_group in mentor_groups:
+            for _, association in enumerate(self.CONFIG.ASSOCIATIONS):
+                time = getattr(mentor_group, f'{association}_timeslot')
+                result_jobs = self.create_job(turn_context, mentor_group.channel_id, f'{time.hour}:{time.minute}', association)
+                if association in self.alfas_bot.jobs.keys():
+                    self.alfas_bot.jobs[association].extend(result_jobs)
+                else:
+                    self.alfas_bot.jobs.update({association: result_jobs})
+        
+        if not self.alfas_bot.scheduler.running:
+            self.alfas_bot.scheduler.start()
+        
+        await turn_context.send_activity("Scheduler has restarted")
 
     # Function to start adding a seperate committee. Expects argument: committee_name
     async def add_committee(self, turn_context: TurnContext):
@@ -598,18 +626,19 @@ class StickyADMINBot(TeamsActivityHandler):
 
     def string_to_datetime(self, time: str):
         hour, minute = int(time[:2]), int(time[3:])
-        time = datetime.datetime(2020, 1, 1, hour, minute, 0)
+        time = datetime.datetime(2020, 1, 1, hour, minute, 0, 0)
         return time
     
     def create_job(self, turn_context: TurnContext, channel_id, string_time: str, association):
         time = self.string_to_datetime(string_time)
         time_5 = time - datetime.timedelta(minutes=5)
         time_1 = time - datetime.timedelta(minutes=1)
-        self.scheduler.add_job(self.send_reminder, args=[turn_context, 1, channel_id, association],
-                                trigger='cron', year=self.CONFIG.ALFAS_DATE.year, 
-                                month=self.CONFIG.ALFAS_DATE.month, day=self.CONFIG.ALFAS_DATE.day,
-                                hour=time_1.hour, minute=time_1.minute)
-        self.scheduler.add_job(self.send_reminder, args=[turn_context, 5, channel_id, association],
-                                trigger='cron', year=self.CONFIG.ALFAS_DATE.year, 
-                                month=self.CONFIG.ALFAS_DATE.month, day=self.CONFIG.ALFAS_DATE.day,
-                                hour=time_5.hour, minute=time_5.minute)
+        one_job = self.alfas_bot.scheduler.add_job(self.send_reminder, args=[turn_context, 1, channel_id, association],
+                                        trigger='cron', year=self.CONFIG.ALFAS_DATE.year,
+                                        month=self.CONFIG.ALFAS_DATE.month, day=self.CONFIG.ALFAS_DATE.day,
+                                        hour=time_1.hour, minute=time_1.minute)
+        five_job = self.alfas_bot.scheduler.add_job(self.send_reminder, args=[turn_context, 5, channel_id, association],
+                                        trigger='cron', year=self.CONFIG.ALFAS_DATE.year,
+                                        month=self.CONFIG.ALFAS_DATE.month, day=self.CONFIG.ALFAS_DATE.day,
+                                        hour=time_5.hour, minute=time_5.minute)
+        return [one_job, five_job]

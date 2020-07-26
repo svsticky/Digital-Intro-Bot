@@ -1,12 +1,14 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 import threading
+import datetime
 from random import seed
 from random import choice
 from botbuilder.core import CardFactory, TurnContext, MessageFactory
 from botbuilder.core.teams import TeamsActivityHandler, TeamsInfo
 from botbuilder.schema import CardAction, HeroCard, Mention, ConversationParameters
 from botbuilder.schema._connector_client_enums import ActionTypes
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import modules.database as db
 import modules.helper_funtions as helper
 from config import DefaultConfig
@@ -21,6 +23,8 @@ class StickyALFASBot(TeamsActivityHandler):
         self.unlocked = True
         self.lock = threading.Lock()
         seed(1230948385) # Does it really matter :P?
+        self.scheduler = AsyncIOScheduler(timezone=self.CONFIG.TIME_ZONE)
+        self.jobs = {}
 
     async def on_message_activity(self, turn_context: TurnContext):
         """
@@ -75,6 +79,11 @@ class StickyALFASBot(TeamsActivityHandler):
         # Save enrollments to google sheet
         if turn_context.activity.text == "InschrijvingenOpslaan":
             await self.save_enrollments(turn_context)
+            return
+        
+        # Update inschrijfbalie planning with certain delay
+        if turn_context.activity.text.startswith("UpdateInschrijfbalie"):
+            await self.update_association_planning(turn_context)
             return
 
         #TODO: what to send if it is not a command?
@@ -309,7 +318,7 @@ class StickyALFASBot(TeamsActivityHandler):
         return_message = "De inschrijvingsclub voor de verenigingen komen langs op de volgende tijden:\n\n"
         association_times = db.getAssociationPlanning(session, mentor_group.mg_id)
         for time in association_times:
-            return_message += f"- {time[0]}: {time[1]} uur\n\n"
+            return_message += f"- {time[0]}: {time[1].hour}:{time[1].minute} uur\n\n"
 
         await turn_context.send_activity(return_message)
 
@@ -349,6 +358,59 @@ class StickyALFASBot(TeamsActivityHandler):
         GoogleSheet().save_enrollments(google_values)
         session.close()
         await turn_context.send_activity("De intresselijst is succesvol opgeslagen!")
+
+    async def update_association_planning(self, turn_context: TurnContext):
+        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+        session = db.Session()
+        db_user = db.getUserOnType(session, 'intro_user', helper.get_user_id(user))
+
+        if not db_user:
+            await turn_context.send_activity("Je bent niet gemachtigd om dit command uit te voeren.")
+            session.close()
+            return
+
+        command_info = turn_context.activity.text.split()
+
+        try:
+            association = command_info[1]
+            delay = int(command_info[2])
+        except IndexError:
+            await turn_context.send_activity("Het commando moet als volgt gespecificeerd worden: UpdateInschrijfbalie <vereniging> <uitstel in minuten>")
+            session.close()
+            return
+        except ValueError:
+            await turn_context.send_activity("Het commando moet als volgt gespecificeerd worden: UpdateInschrijfbalie <vereniging> <uitstel in minuten>")
+            session.close()
+            return
+
+        if association not in self.CONFIG.ASSOCIATIONS:
+            await turn_context.send_activity(f"Verkeerde specificatie van de vereniging. De bot kent: {', '.join(self.CONFIG.ASSOCIATIONS)}.")
+            session.close()
+            return
+
+        mentor_groups = db.getTable(session, db.MentorGroup)
+
+        for group in mentor_groups:
+            time = getattr(group, f'{association}_timeslot')
+            time_date = datetime.datetime.combine(datetime.date.today(), time)
+            time_date += datetime.timedelta(minutes=delay)
+            time = datetime.time(time_date.hour, time_date.minute, 0, 0)
+            setattr(group, f'{association}_timeslot', time)
+            db.dbMerge(session, group)
+
+        new_jobs = []
+        for job in self.jobs[association]:
+            run_time = job.next_run_time
+            new_run_time = run_time + datetime.timedelta(minutes=delay)
+            new_job = self.scheduler.reschedule_job(job.id, trigger='cron', year=self.CONFIG.ALFAS_DATE.year,
+                                            month=self.CONFIG.ALFAS_DATE.month, day=self.CONFIG.ALFAS_DATE.day,
+                                            hour=new_run_time.hour, minute=new_run_time.minute)
+            new_jobs.append(new_job)
+        
+        self.jobs[association] = new_jobs
+
+        session.close()
+        await turn_context.send_activity(f"De inschrijfbalieplanning voor '{association}' is succesvol bijgewerkt.")
 
     #Helper functions!
     async def match_group_with_committee(self, turn_context, session, committee, mentor_group):

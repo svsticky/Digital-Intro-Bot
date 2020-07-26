@@ -149,7 +149,7 @@ class MentorGroup(SQLAlchemyBase):
 
     # Creates timeslot for all participating associations.
     for association in _config.ASSOCIATIONS:
-        exec(f'{association}_timeslot = sa.Column(sa.String(50))')
+        exec(f'{association}_timeslot = sa.Column(sa.Time)')
 
 class USPLocation(SQLAlchemyBase):
     __tablename__ = 'usp_location'
@@ -181,7 +181,6 @@ class Enrollment(SQLAlchemyBase):
     last_name = sa.Column(sa.String(50))
     email_address = sa.Column(sa.String(50))
     __table_args__ = (sa.UniqueConstraint('committee_id', 'email_address', name='_id_email_uc'),)
-
 
 @event.listens_for(User, 'mapper_configured')
 def receive_mapper_configured(mapper, class_):
