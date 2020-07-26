@@ -3,6 +3,7 @@
 # Licensed under the MIT License.
 
 import os
+import datetime
 from dotenv import load_dotenv
 load_dotenv('./.env')
 
@@ -35,5 +36,7 @@ class DefaultConfig:
     MAIN_ADMIN = ["Niels Kwadijk", "Joris de Jong", "Merijn Stiekema"]
 
     ASSOCIATIONS = ["Sticky", "Aeskwadraat"]
+
+    ALFAS_DATE = datetime.date(2020, 9, 3) # year, month, day
 
     TIME_ZONE = os.getenv("TimeZone")

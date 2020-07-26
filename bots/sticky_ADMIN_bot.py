@@ -606,6 +606,10 @@ class StickyADMINBot(TeamsActivityHandler):
         time_5 = time - datetime.timedelta(minutes=5)
         time_1 = time - datetime.timedelta(minutes=1)
         self.scheduler.add_job(self.send_reminder, args=[turn_context, 1, channel_id, association],
-                                trigger='cron', hour=time_1.hour, minute=time_1.minute)
+                                trigger='cron', year=self.CONFIG.ALFAS_DATE.year, 
+                                month=self.CONFIG.ALFAS_DATE.month, day=self.CONFIG.ALFAS_DATE.day,
+                                hour=time_1.hour, minute=time_1.minute)
         self.scheduler.add_job(self.send_reminder, args=[turn_context, 5, channel_id, association],
-                                trigger='cron', hour=time_5.hour, minute=time_5.minute)
+                                trigger='cron', year=self.CONFIG.ALFAS_DATE.year, 
+                                month=self.CONFIG.ALFAS_DATE.month, day=self.CONFIG.ALFAS_DATE.day,
+                                hour=time_5.hour, minute=time_5.minute)
