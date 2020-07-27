@@ -43,7 +43,7 @@
           "commands": [
             {
               "title": "GebruikersInfo",
-              "description": "Vertelt hoe je bekent bent bij de bot."
+              "description": "Vertelt hoe je bekend bent bij de bot."
             }
           ]
         }

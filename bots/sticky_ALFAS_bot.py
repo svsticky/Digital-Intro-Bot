@@ -161,7 +161,7 @@ class StickyALFASBot(TeamsActivityHandler):
         card = CardFactory.hero_card(
             HeroCard(
                 title="Beschikbare Commissies",
-                text="Kies de commissie die je wil ontmoeten! Je kunt een commissie kiezen of de bot dit werkt laten doen. \
+                text="Kies de commissie die je wil ontmoeten! Je kunt een commissie kiezen of de bot dit werk laten doen. \
                       Klik op 'Refresh' om de lijst te vernieuwen.",
                 buttons=[
                     CardAction(
