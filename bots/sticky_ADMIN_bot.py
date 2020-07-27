@@ -284,6 +284,11 @@ class StickyADMINBot(TeamsActivityHandler):
         # Obtain timeslots sheet
         await turn_context.send_activity("Gestart met het ophalen van verenigingstijdsloten voor de mentorgroepen...")
         sheet_values = GoogleSheet().get_timeslots()
+        
+        # For simplicity, we rebuild the whole scheduler if there are jobs already present.
+        if self.alfas_bot.jobs:
+            self.alfas_bot.jobs.clear()
+            self.alfas_bot.scheduler.remove_all_jobs()
 
         for row in sheet_values[1:]:
             mentor_group = db.getFirst(session, db.MentorGroup, 'name', row[0])
@@ -306,10 +311,17 @@ class StickyADMINBot(TeamsActivityHandler):
 
         if not self.alfas_bot.scheduler.running:
             self.alfas_bot.scheduler.start()
+        
+        print(self.alfas_bot.jobs)
         await turn_context.send_activity("Alle tijdsloten zijn toegevoegd!")
     
     async def restart_scheduler(self, turn_context, session):
         mentor_groups = db.getTable(session, db.MentorGroup)
+
+        #Remove all jobs if there are any present.
+        if self.alfas_bot.jobs:
+            self.alfas_bot.jobs.clear()
+            self.alfas_bot.scheduler.remove_all_jobs()
 
         for mentor_group in mentor_groups:
             for _, association in enumerate(self.CONFIG.ASSOCIATIONS):
@@ -322,6 +334,8 @@ class StickyADMINBot(TeamsActivityHandler):
         
         if not self.alfas_bot.scheduler.running:
             self.alfas_bot.scheduler.start()
+        
+        print(self.alfas_bot.jobs)
         
         await turn_context.send_activity("Scheduler has restarted")
 
