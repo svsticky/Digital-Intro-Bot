@@ -2,7 +2,7 @@
   "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.5/MicrosoftTeams.schema.json",
   "manifestVersion": "1.5",
   "version": "1.0.0",
-  "id": "1a56b4e2-4840-4afd-bda1-d24f6c943977",
+  "id": "PUT APP_ID HERE",
   "packageName": "com.teams.sample.alfasbot",
   "developer": {
     "name": "ALFASbot",
@@ -25,7 +25,7 @@
   "accentColor": "#FFFFFF",
   "bots": [
     {
-      "botId": "1a56b4e2-4840-4afd-bda1-d24f6c943977",
+      "botId": "PUT APP_ID HERE",
       "scopes": [
         "personal",
         "groupchat",

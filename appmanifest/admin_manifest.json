@@ -2,7 +2,7 @@
   "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.5/MicrosoftTeams.schema.json",
   "manifestVersion": "1.5",
   "version": "1.0.0",
-  "id": "d30b7ee2-98f9-4a72-bff3-c8262ef707ce",
+  "id": "PUT APP_ID HERE",
   "packageName": "com.teams.sample.adminbot",
   "developer": {
     "name": "ADMINbot",
@@ -25,7 +25,7 @@
   "accentColor": "#FFFFFF",
   "bots": [
     {
-      "botId": "d30b7ee2-98f9-4a72-bff3-c8262ef707ce",
+      "botId": "PUT APP_ID HERE",
       "scopes": [
         "personal",
         "groupchat",
