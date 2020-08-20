@@ -318,7 +318,7 @@ class StickyALFASBot(TeamsActivityHandler):
         return_message = "De inschrijvingsclub voor de verenigingen komen langs op de volgende tijden:\n\n"
         association_times = db.getAssociationPlanning(session, mentor_group.mg_id)
         for time in association_times:
-            return_message += f"- {time[0]}: {time[1].hour}:{time[1].minute} uur\n\n"
+            return_message += f"- {time[0]}: {time[1].hour}:{time[1].minute}{'0' if time[1].minute == 0 else ''} uur\n\n"
 
         await turn_context.send_activity(return_message)
 
