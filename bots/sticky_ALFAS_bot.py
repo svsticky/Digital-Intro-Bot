@@ -85,6 +85,10 @@ class StickyALFASBot(TeamsActivityHandler):
         if turn_context.activity.text.startswith("UpdateInschrijfbalie"):
             await self.update_association_planning(turn_context)
             return
+        
+        if turn_context.activity.text.startswith("VeranderCommissie"):
+            await self.switch_committee(turn_context)
+            return
 
         #TODO: what to send if it is not a command?
         await turn_context.send_activity("Ik ken dit commando niet. Misschien heb je een typfout gemaakt?")
@@ -193,16 +197,19 @@ class StickyALFASBot(TeamsActivityHandler):
         session = db.Session()
         mentor_group = db.getFirst(session, db.MentorGroup, 'channel_id', channel_id)
 
+        # Check if the mentorgroup exists.
         if not mentor_group:
             await turn_context.send_activity("Deze mentorgroep bestaat niet voor de bot. Registreer de groep eerst of vraag een introlid dit te doen.")
             session.close()
             return
         
+        # Check if the mentorgroup is already occupied.
         if mentor_group.occupied:
             await turn_context.send_activity("Je hebt al een match met een andere commissie, deze moet eerst door de commissie weer worden vrijgegeven.")
             session.close()
             return
-            
+
+        # Logic for creating a match. A lock needs to be acquired for atomicity reasons.   
         try:
             self.lock.acquire()
             committees = db.getNonVisitedCommittees(session, mentor_group.mg_id)
@@ -213,18 +220,22 @@ class StickyALFASBot(TeamsActivityHandler):
                 return
 
             chosen_committee = choice(committees)
+            # This method will actually create the match.
             await self.match_group_with_committee(turn_context, session, chosen_committee, mentor_group)
         finally:
+            # The finally statement will always be executed when the try clause finishes.
             self.lock.release()
 
     async def choose_committee(self, turn_context: TurnContext):
         #Get user from teams and database
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+        channel_id = helper.get_channel_id(turn_context.activity)
         session = db.Session()
         db_user = db.getUserOnType(session, 'mentor_user', helper.get_user_id(user))
+        db_group = db.getFirst(session, db.MentorGroup, 'channel_id', channel_id)
 
-        #If exists in database...
-        if db_user:
+        #If exists in database and belongs to this group.
+        if db_user and db_group and db_user.mg_id == db_group.mg_id:
             # Check if command is correct
             try:
                 committee_name = turn_context.activity.text.split()[1]
@@ -236,9 +247,9 @@ class StickyALFASBot(TeamsActivityHandler):
             if mentor_group.occupied:
                 await turn_context.send_activity("Je hebt al een match met een andere commissie, deze moet eerst door de commissie weer worden vrijgegeven.")
                 session.close()
-                return            
+                return
 
-            # If committee is not occupied
+            # If committee is not occupied, again a lock needs to be acquired.
             try:
                 self.lock.acquire()
                 committee = db.getFirst(session, db.Committee, 'name', committee_name)
@@ -246,9 +257,10 @@ class StickyALFASBot(TeamsActivityHandler):
             finally:
                 self.lock.release()          
         else:
-            await turn_context.send_activity(f"Je bent geen mentor wat betekent dat je geen rechten hebt om dit commando uit te voeren.")
+            await turn_context.send_activity(f"Je bent geen mentor voor deze groep wat betekent dat je geen rechten hebt om dit commando uit te voeren.")
         session.close()
 
+    # Function that takes care of saving enrollments for committees.
     async def enroll(self, turn_context: TurnContext):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
 
@@ -269,11 +281,13 @@ class StickyALFASBot(TeamsActivityHandler):
             await helper.create_personal_conversation(turn_context, user, f"Je bent toegevoegd aan de interesselijst voor '{committee.name}'", self._app_id)
         session.close()
 
+    # Command that releases a committee after visiting a mentor group.
     async def release_committee(self, turn_context: TurnContext):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         session = db.Session()
         db_user = db.getUserOnType(session, 'committee_user', helper.get_user_id(user))
 
+        # Can only be performed by a committee user.
         if db_user:
             # Set committee occupied to False
             committee = db.getFirst(session, db.Committee, 'committee_id', db_user.committee_id)
@@ -299,6 +313,7 @@ class StickyALFASBot(TeamsActivityHandler):
             await turn_context.send_activity("Je bent niet gemachtigd om dit command uit te voeren.")
         session.close()
 
+    # Get planning for the Informatiebalie for your mentorgroup.
     async def association_planning(self, turn_context: TurnContext):
         channel_id = turn_context.activity.channel_data['teamsChannelId']
         session = db.Session()
@@ -322,6 +337,7 @@ class StickyALFASBot(TeamsActivityHandler):
 
         await turn_context.send_activity(return_message)
 
+    # Saves the enrollments to a tab in the google sheets linked to the bot.
     async def save_enrollments(self, turn_context: TurnContext):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         session = db.Session()
@@ -359,6 +375,7 @@ class StickyALFASBot(TeamsActivityHandler):
         session.close()
         await turn_context.send_activity("De intresselijst is succesvol opgeslagen!")
 
+    # Command for the inschrijfbalie people to update the inschrijfbalie planning with a delay.
     async def update_association_planning(self, turn_context: TurnContext):
         user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
         session = db.Session()
@@ -411,6 +428,32 @@ class StickyALFASBot(TeamsActivityHandler):
 
         session.close()
         await turn_context.send_activity(f"De inschrijfbalieplanning voor '{association}' is succesvol bijgewerkt.")
+
+    async def switch_committee(self, turn_context: TurnContext):
+        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+        session = db.Session()
+        db_user = db.getUserOnType(session, 'committee_user', helper.get_user_id(user))
+
+        if db_user:
+            try:
+                new_committee_name = turn_context.activity.text.split()[1]
+                password = turn_context.activity.text.split()[2]
+            except ValueError:
+                await turn_context.send_activity("Wrong command setup try: SwitchCommittee <committee_name> <password>")
+                session.close()
+                return
+            
+            if password == self.CONFIG.COMMITTEE_PASSWORD:
+                new_committee = db.getFirst(session, db.Committee, 'name', new_committee_name)
+                if new_committee:
+                    db_user.committee_id = new_committee.committee_id
+                    db.dbMerge(session, db_user)
+                else:
+                    await turn_context.send_activity("This committee does not exist.")
+            else:
+                await turn_context.send_activity("Wrong password, you are not allowed to switch committees")
+        session.close()
+        await turn_context.send_activity(f"You have succesfully switched to committee '{new_committee_name}'.")
 
     #Helper functions!
     async def match_group_with_committee(self, turn_context, session, committee, mentor_group):

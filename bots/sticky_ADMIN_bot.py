@@ -230,6 +230,7 @@ class StickyADMINBot(TeamsActivityHandler):
 
         # Double for loop which is sad... If you can come up with something better, let me know.
         # For all members in the sheet...
+        not_existed_list = []
         for row in sheet_values[1:]:
             #get corresponding member
             matching_member = next(filter(lambda member: member.email == row[2], members), None)
@@ -253,7 +254,7 @@ class StickyADMINBot(TeamsActivityHandler):
                                                         user_name=matching_member.name,
                                                         mg_id=mentor_group.mg_id)
                     else:
-                        await turn_context.send_activity(f"De mentorgroep voor '{matching_member.name} bestaat niet!")
+                        not_existed_list.append(matching_member.name)
             elif self.alfas_bot and row[3] == "Commissie": # These are only added when the alfas bot is launched.
                 user = db.getUserOnType(session, 'committee_user', helper.get_user_id(matching_member))
                 if not user:
@@ -263,7 +264,7 @@ class StickyADMINBot(TeamsActivityHandler):
                                                         user_name=matching_member.name,
                                                         committee_id=committee.committee_id)
                     else:
-                        await turn_context.send_activity(f"De commissie voor '{matching_member.name}' bestaat niet!")
+                        not_existed_list.append(matching_member.name)
             elif self.uithof_bot and row[3] == "USP": # These are only added when the uithof bot is launched.
                 user = db.getUserOnType(session, 'usp_user', helper.get_user_id(matching_member))
                 if not user:
@@ -273,12 +274,15 @@ class StickyADMINBot(TeamsActivityHandler):
                                                     user_name=matching_member.name,
                                                     location_id=location.location_id)
                     else:
-                        await turn_context.send_activity(f"De locatie voor '{matching_member.name}' bestaat niet!")
+                        not_existed_list.append(matching_member.name)
             # Insert if a database_member is created (this is not the case if the user already exists in the database).
             if database_member is not None:
                 db.dbInsert(session, database_member)
 
-        await turn_context.send_activity("Alle gebruikers zijn toegevoegd met bijbehorende rechten.")
+        if not_existed_list:
+            await turn_context.send_activity("De volgende gebruikers hebben groepen die niet bestaan: " + ", ".join(not_existed_list))
+        else:
+            await turn_context.send_activity("Alle gebruikers zijn toegevoegd met bijbehorende rechten.")
 
     async def init_timeslots(self, turn_context: TurnContext, session):
         # Obtain timeslots sheet
@@ -290,30 +294,37 @@ class StickyADMINBot(TeamsActivityHandler):
             self.alfas_bot.jobs.clear()
             self.alfas_bot.scheduler.remove_all_jobs()
 
+        not_existing_groups = []
         for row in sheet_values[1:]:
             mentor_group = db.getFirst(session, db.MentorGroup, 'name', row[0])
-            for idx, association in enumerate(self.CONFIG.ASSOCIATIONS):
-                try:
-                    time_hours = int(row[idx+1].split(':')[0])
-                    time_minutes = int(row[idx+1].split(':')[1])
-                except ValueError:
-                    await turn_context.send_activity("De tijdsloten in de google sheet zijn niet goed geformateerd.")
-                    return
-                setattr(mentor_group, f'{association}_timeslot', datetime.time(time_hours, time_minutes, 0, 0))
-            db.dbMerge(session, mentor_group)
-           
-            for idx, association in enumerate(self.CONFIG.ASSOCIATIONS):
-                result_jobs = self.create_job(turn_context, mentor_group.channel_id, row[idx+1], association)
-                if association in self.alfas_bot.jobs.keys():
-                    self.alfas_bot.jobs[association].extend(result_jobs)
-                else:
-                    self.alfas_bot.jobs.update({association: result_jobs})
+
+            if mentor_group:
+                for idx, association in enumerate(self.CONFIG.ASSOCIATIONS):
+                    try:
+                        time_hours = int(row[idx+1].split(':')[0])
+                        time_minutes = int(row[idx+1].split(':')[1])
+                    except ValueError:
+                        await turn_context.send_activity("De tijdsloten in de google sheet zijn niet goed geformateerd.")
+                        return
+                    setattr(mentor_group, f'{association}_timeslot', datetime.time(time_hours, time_minutes, 0, 0))
+                db.dbMerge(session, mentor_group)
+            
+                for idx, association in enumerate(self.CONFIG.ASSOCIATIONS):
+                    result_jobs = self.create_job(turn_context, mentor_group.channel_id, row[idx+1], association)
+                    if association in self.alfas_bot.jobs.keys():
+                        self.alfas_bot.jobs[association].extend(result_jobs)
+                    else:
+                        self.alfas_bot.jobs.update({association: result_jobs})
+            else:
+                not_existing_groups.append(row[0])
 
         if not self.alfas_bot.scheduler.running:
             self.alfas_bot.scheduler.start()
         
-        print(self.alfas_bot.jobs)
-        await turn_context.send_activity("Alle tijdsloten zijn toegevoegd!")
+        if not_existing_groups:
+            await turn_context.send_activity("De volgende mentorgroepen bestonden niet tijdens het ophalen van de tijdsloten: " + ", ".join(not_existing_groups))
+        else:
+            await turn_context.send_activity("Alle tijdsloten zijn toegevoegd!")
     
     async def restart_scheduler(self, turn_context, session):
         mentor_groups = db.getTable(session, db.MentorGroup)
