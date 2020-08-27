@@ -166,7 +166,7 @@ class StickyADMINBot(TeamsActivityHandler):
             #Check if it is a "Mentorgroep" channel
             if channel.name.startswith("Mentorgroep"):
                 # If so, add it to the database as a MentorGroup or update it.
-                group_name = channel.name.split()[1]
+                group_name = ' '.join(channel.name.split()[1:])
                 existing_mentor_group = db.getFirst(session, db.MentorGroup, 'name', group_name)
 
                 if not existing_mentor_group:
@@ -186,7 +186,7 @@ class StickyADMINBot(TeamsActivityHandler):
             if self.alfas_bot: # If the alfas bot is launched
                 if channel.name.startswith("Commissie"):
                     #If so, add it to the database as a Commissie or update it.
-                    committee_name = channel.name.split()[1]
+                    committee_name = ' '.join(channel.name.split()[1:])
                     existing_committee = db.getFirst(session, db.Committee, 'name', committee_name)
 
                     if not existing_committee:
@@ -204,7 +204,7 @@ class StickyADMINBot(TeamsActivityHandler):
             if self.uithof_bot: # If the uithof bot is launched
                 if channel.name.startswith("USP"):
                     #If so, add it to the database as a Commissie or update it.
-                    location_name = channel.name.split()[1]
+                    location_name = ' '.join(channel.name.split()[1:])
                     existing_location = db.getFirst(session, db.USPLocation, 'name', location_name)
 
                     if not existing_location:
