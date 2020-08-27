@@ -231,11 +231,13 @@ class StickyADMINBot(TeamsActivityHandler):
         # Double for loop which is sad... If you can come up with something better, let me know.
         # For all members in the sheet...
         not_existed_list = []
+        not_added_list = []
         for row in sheet_values[1:]:
             #get corresponding member
             matching_member = next(filter(lambda member: member.email == row[2], members), None)
 
             if matching_member is None:
+                not_added_list.append(row[0] + row[1])
                 continue
             database_member = None
 
@@ -254,7 +256,8 @@ class StickyADMINBot(TeamsActivityHandler):
                                                         user_name=matching_member.name,
                                                         mg_id=mentor_group.mg_id)
                     else:
-                        not_existed_list.append(matching_member.name)
+                        if row[4] not in not_existed_list:
+                            not_existed_list.append(row[4])
             elif self.alfas_bot and row[3] == "Commissie": # These are only added when the alfas bot is launched.
                 user = db.getUserOnType(session, 'committee_user', helper.get_user_id(matching_member))
                 if not user:
@@ -264,7 +267,8 @@ class StickyADMINBot(TeamsActivityHandler):
                                                         user_name=matching_member.name,
                                                         committee_id=committee.committee_id)
                     else:
-                        not_existed_list.append(matching_member.name)
+                        if row[4] not in not_existed_list:
+                            not_existed_list.append(row[4])
             elif self.uithof_bot and row[3] == "USP": # These are only added when the uithof bot is launched.
                 user = db.getUserOnType(session, 'usp_user', helper.get_user_id(matching_member))
                 if not user:
@@ -274,13 +278,16 @@ class StickyADMINBot(TeamsActivityHandler):
                                                     user_name=matching_member.name,
                                                     location_id=location.location_id)
                     else:
-                        not_existed_list.append(matching_member.name)
+                        if row[4] not in not_existed_list:
+                            not_existed_list.append(row[4])
             # Insert if a database_member is created (this is not the case if the user already exists in the database).
             if database_member is not None:
                 db.dbInsert(session, database_member)
 
         if not_existed_list:
-            await turn_context.send_activity("De volgende gebruikers hebben groepen die niet bestaan: " + ", ".join(not_existed_list))
+            await turn_context.send_activity("De volgende groepen bestaan niet: " + ", ".join(not_existed_list))
+        if not_added_list:
+            await turn_context.send_activity("De volgende personen zijn niet aan het team toegevoegd: " + ", ".join(not_added_list))
         else:
             await turn_context.send_activity("Alle gebruikers zijn toegevoegd met bijbehorende rechten.")
 
