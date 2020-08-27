@@ -234,10 +234,10 @@ class StickyADMINBot(TeamsActivityHandler):
         not_added_list = []
         for row in sheet_values[1:]:
             #get corresponding member
-            matching_member = next(filter(lambda member: member.email == row[2], members), None)
+            matching_member = next(filter(lambda member: member.email == row[2] or member.email == row[2].replace('students.', ''), members), None)
 
             if matching_member is None:
-                not_added_list.append(row[0] + row[1])
+                not_added_list.append(row[0] + " " + row[1])
                 continue
             database_member = None
 
