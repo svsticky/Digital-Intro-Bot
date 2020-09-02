@@ -1,7 +1,6 @@
 # The admin bot (for the cool kids)
 
 import datetime
-import asyncio
 from botbuilder.core import CardFactory, TurnContext, MessageFactory
 from botbuilder.core.teams import TeamsActivityHandler, TeamsInfo
 from botbuilder.schema import CardAction, HeroCard, Mention, ConversationParameters
@@ -181,7 +180,10 @@ class StickyADMINBot(TeamsActivityHandler):
                     db.dbMerge(session, existing_mentor_group)
                 # Notify the channel that it is now an ALFAS channel
                 init_message = MessageFactory.text(f"Dit kanaal is nu het botkanaal voor Mentorgroep: '{group_name}'")
-                await helper.create_channel_conversation(turn_context, channel.id, init_message)
+                try:
+                    await helper.create_channel_conversation(turn_context, channel.id, init_message)
+                except
+                    pass
 
             #Check if it is a "Commissie" channel
             if self.alfas_bot: # If the alfas bot is launched
@@ -200,7 +202,10 @@ class StickyADMINBot(TeamsActivityHandler):
                     # Notify the channel that it is now an ALFAS channel
                     print(committee_name)
                     init_message = MessageFactory.text(f"Dit kanaal is nu het ALFASkanaal voor Commissie: '{committee_name}'")
-                    await helper.create_channel_conversation(turn_context, channel.id, init_message)
+                    try:
+                        await helper.create_channel_conversation(turn_context, channel.id, init_message)
+                    except
+                        pass
 
             #Check if it is a "usp location" channel
             if self.uithof_bot: # If the uithof bot is launched
@@ -218,8 +223,10 @@ class StickyADMINBot(TeamsActivityHandler):
                         db.dbMerge(session, existing_location)
                     # Notify the channel that it is now an USP channel
                     init_message = MessageFactory.text(f"Dit kanaal is nu het USPkanaal voor locatie: '{location_name}'")
-                    await helper.create_channel_conversation(turn_context, channel.id, init_message)
-            await asyncio.sleep(1)
+                    try:
+                        await helper.create_channel_conversation(turn_context, channel.id, init_message)
+                    except
+                        pass
 
         # Done with the channels
         await turn_context.send_activity("Alle groepen zijn geïnitialiseerd!")
@@ -286,8 +293,6 @@ class StickyADMINBot(TeamsActivityHandler):
             # Insert if a database_member is created (this is not the case if the user already exists in the database).
             if database_member is not None:
                 db.dbInsert(session, database_member)
-            
-            await asyncio.sleep(1)
 
         if not_existed_list:
             await turn_context.send_activity("De volgende groepen bestaan niet: " + ", ".join(not_existed_list))
