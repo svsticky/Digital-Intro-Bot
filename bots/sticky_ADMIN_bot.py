@@ -182,7 +182,7 @@ class StickyADMINBot(TeamsActivityHandler):
                 init_message = MessageFactory.text(f"Dit kanaal is nu het botkanaal voor Mentorgroep: '{group_name}'")
                 try:
                     await helper.create_channel_conversation(turn_context, channel.id, init_message)
-                except
+                except:
                     pass
 
             #Check if it is a "Commissie" channel
@@ -204,7 +204,7 @@ class StickyADMINBot(TeamsActivityHandler):
                     init_message = MessageFactory.text(f"Dit kanaal is nu het ALFASkanaal voor Commissie: '{committee_name}'")
                     try:
                         await helper.create_channel_conversation(turn_context, channel.id, init_message)
-                    except
+                    except:
                         pass
 
             #Check if it is a "usp location" channel
@@ -225,7 +225,7 @@ class StickyADMINBot(TeamsActivityHandler):
                     init_message = MessageFactory.text(f"Dit kanaal is nu het USPkanaal voor locatie: '{location_name}'")
                     try:
                         await helper.create_channel_conversation(turn_context, channel.id, init_message)
-                    except
+                    except:
                         pass
 
         # Done with the channels
