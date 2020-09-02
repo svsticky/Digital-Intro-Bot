@@ -219,7 +219,7 @@ class StickyADMINBot(TeamsActivityHandler):
                     # Notify the channel that it is now an USP channel
                     init_message = MessageFactory.text(f"Dit kanaal is nu het USPkanaal voor locatie: '{location_name}'")
                     await helper.create_channel_conversation(turn_context, channel.id, init_message)
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(1)
 
         # Done with the channels
         await turn_context.send_activity("Alle groepen zijn geïnitialiseerd!")
@@ -287,7 +287,7 @@ class StickyADMINBot(TeamsActivityHandler):
             if database_member is not None:
                 db.dbInsert(session, database_member)
             
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(1)
 
         if not_existed_list:
             await turn_context.send_activity("De volgende groepen bestaan niet: " + ", ".join(not_existed_list))
