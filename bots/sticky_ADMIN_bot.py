@@ -200,7 +200,6 @@ class StickyADMINBot(TeamsActivityHandler):
                         existing_committee.name = committee_name
                         db.dbMerge(session, existing_committee)
                     # Notify the channel that it is now an ALFAS channel
-                    print(committee_name)
                     init_message = MessageFactory.text(f"Dit kanaal is nu het ALFASkanaal voor Commissie: '{committee_name}'")
                     try:
                         await helper.create_channel_conversation(turn_context, channel.id, init_message)
@@ -236,12 +235,25 @@ class StickyADMINBot(TeamsActivityHandler):
         await turn_context.send_activity("Gestart met het initialiseren van gebruikers via de google sheets...")
         sheet_values = GoogleSheet().get_members()
         # Get members from teams
-        members = await TeamsInfo.get_members(turn_context)
+        continuation_token = None
+        members = []
+        team_details = await TeamsInfo.get_team_details(turn_context)
+        team_id = team_details.id
+
+        while True:
+            paged_members = await TeamsInfo.get_paged_members(turn_context, continuation_token, 100)
+            continuation_token = paged_members.continuation_token
+            members += paged_members.members
+
+            if continuation_token == None:
+                break
 
         # Double for loop which is sad... If you can come up with something better, let me know.
         # For all members in the sheet...
         not_existed_list = []
         not_added_list = []
+        for member in members:
+            print(member.email)
         for row in sheet_values[1:]:
             #get corresponding member
             matching_member = next(filter(lambda member: member.email == row[2] or member.email == row[2].replace('students.', ''), members), None)
