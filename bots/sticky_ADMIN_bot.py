@@ -228,7 +228,10 @@ class StickyADMINBot(TeamsActivityHandler):
                         pass
 
         # Done with the channels
-        await turn_context.send_activity("Alle groepen zijn geïnitialiseerd!")
+        try:
+            await turn_context.send_activity("Alle groepen zijn geïnitialiseerd!")
+        except:
+            pass
 
     async def init_members(self, turn_context: TurnContext, session):
         # Starting with adding members. Members are retrieved from a private google sheet.
