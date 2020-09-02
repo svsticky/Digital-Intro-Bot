@@ -1,6 +1,7 @@
 # The admin bot (for the cool kids)
 
 import datetime
+import time
 from botbuilder.core import CardFactory, TurnContext, MessageFactory
 from botbuilder.core.teams import TeamsActivityHandler, TeamsInfo
 from botbuilder.schema import CardAction, HeroCard, Mention, ConversationParameters
@@ -217,6 +218,7 @@ class StickyADMINBot(TeamsActivityHandler):
                     # Notify the channel that it is now an USP channel
                     init_message = MessageFactory.text(f"Dit kanaal is nu het USPkanaal voor locatie: '{location_name}'")
                     await helper.create_channel_conversation(turn_context, channel.id, init_message)
+            time.sleep(0.5)
 
         # Done with the channels
         await turn_context.send_activity("Alle groepen zijn geïnitialiseerd!")
@@ -283,6 +285,8 @@ class StickyADMINBot(TeamsActivityHandler):
             # Insert if a database_member is created (this is not the case if the user already exists in the database).
             if database_member is not None:
                 db.dbInsert(session, database_member)
+            
+            time.sleep(0.2)
 
         if not_existed_list:
             await turn_context.send_activity("De volgende groepen bestaan niet: " + ", ".join(not_existed_list))
