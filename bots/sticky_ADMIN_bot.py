@@ -244,7 +244,10 @@ class StickyADMINBot(TeamsActivityHandler):
         team_id = team_details.id
 
         while True:
-            paged_members = await TeamsInfo.get_paged_members(turn_context, continuation_token, 100)
+            try:
+                paged_members = await TeamsInfo.get_paged_members(turn_context, continuation_token, 100)
+            except:
+                pass
             continuation_token = paged_members.continuation_token
             members += paged_members.members
 
