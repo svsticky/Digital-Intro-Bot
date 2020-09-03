@@ -583,7 +583,7 @@ class StickyADMINBot(TeamsActivityHandler):
 
         try:
             committee_password = command_info[1]
-            committee_name = command_info[2]
+            committee_name = " ".join(command_info[2:])
         except IndexError:
             await turn_context.send_activity("Dit commando heeft meer informatie nodig: IkBenCommissielid <wachtwoord> <commissie_naam>.")
             return
