@@ -504,7 +504,7 @@ class StickyALFASBot(TeamsActivityHandler):
 
         if db_user:
             try:
-                mentor_group_name = turn_context.activity.text[1]
+                mentor_group_name = turn_context.activity.text.split()[1]
             except IndexError:
                 session.close()
                 await turn_context.send_activity("specify mentor group")
