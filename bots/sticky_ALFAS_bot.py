@@ -459,6 +459,62 @@ class StickyALFASBot(TeamsActivityHandler):
                 return
         session.close()
         await turn_context.send_activity(f"You have succesfully switched to committee '{new_committee_name}'.")
+    
+    async def release_all(self, turn_context: TurnContext):
+        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+        
+        session = db.Session()
+        db_user = db.getUserOnType(session, 'intro_user', helper.get_user_id(user))
+
+        if db_user:
+            visits = db.getTable(session, db.Visit)
+            mentor_groups = db.getTable(session, db.MentorGroup)
+            committees = db.getTable(session, db.Committee)
+
+            for visit in visits:
+                visit.finished = True
+                db.dbMerge(session, visit)
+            
+            for mentor_group in mentor_groups:
+                mentor_group.occupied = False
+                db.dbMerge(session, mentor_group)
+            
+            for committee in committees:
+                committee.occupied = False
+                db.dbMerge(session, committee)
+            
+            await turn_context.send_activity("All matches have been disbanded")
+        else:
+            await turn_context.send_activity("Nope")
+        session.close()
+
+    async def release_mentor_group(self, turn_context: TurnContext):
+        user = await TeamsInfo.get_member(turn_context, turn_context.activity.from_property.id)
+        
+        session = db.Session()
+        db_user = db.getUserOnType(session, 'intro_user', helper.get_user_id(user))
+
+        if db_user:
+            try:
+                mentor_group_name = turn_context.activity.text[1]
+            except IndexError:
+                session.close()
+                await turn_context.send_activity("specify mentor group")
+                return
+
+            mentor_group = db.getFirst(session, db.MentorGroup, 'name', mentor_group_name)
+            mentor_group.occupied = False
+            db.dbMerge(session, mentor_group)
+
+            active_visit = db.getActiveVisitMG(session, mentor_group.mg_id)
+
+            if active_visit:
+                active_visit.finished = True
+                db.dbMerge(session, active_visit)
+            
+            await turn_context.send_activity("Done!")
+        else:
+            turn_context.send_activity("Nope")
 
     #Helper functions!
     async def match_group_with_committee(self, turn_context, session, committee, mentor_group):

@@ -66,6 +66,10 @@ def getActiveVisit(session, committee_id):
     visit = session.query(Visit).filter((Visit.committee_id == committee_id) & (Visit.finished == False)).first()
     return visit
 
+def getActiveVisitMG(session, mentor_group_id):
+    visit = session.query(Visit).filter((Visit.mg_id == mentor_group_id) & (Visit.finished == False)).first()
+    return visit
+
 def getNonVisitedCommittees(session, mg_id):
     visits = session.query(Visit).filter((Visit.mg_id == mg_id) & (Visit.finished == True))
     committees = getAll(session, Committee, 'occupied', False)
