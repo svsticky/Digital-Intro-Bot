@@ -90,7 +90,7 @@ class StickyALFASBot(TeamsActivityHandler):
             await self.switch_committee(turn_context)
             return
         
-        if turn_context.activity.text == "MentorVrijgeven":
+        if turn_context.activity.startswith("MentorVrijgeven"):
             await self.release_mentor_group(turn_context)
             return
         
