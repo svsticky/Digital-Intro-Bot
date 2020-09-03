@@ -22,14 +22,6 @@ class StickyADMINBot(TeamsActivityHandler):
         self.uithof_bot = uithof # uithof bot object
         self.just_booted = True
 
-    async def on_teams_members_added(self, teams_members_added: [TeamsChannelAccount],
-        team_info: TeamsInfo, turn_context: TurnContext
-    ):
-        message = "Welcome message here..."
-        for member in teams_members_added:
-            await helper.create_personal_conversation(turn_context, member, message, self._app_id)
-        return
-
     async def on_message_activity(self, turn_context: TurnContext):
         TurnContext.remove_recipient_mention(turn_context.activity)
         turn_context.activity.text = turn_context.activity.text.strip()

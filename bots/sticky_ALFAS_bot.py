@@ -278,7 +278,10 @@ class StickyALFASBot(TeamsActivityHandler):
             enrollment = db.Enrollment(committee_id=committee_id, first_name=user.given_name,
                                        last_name=user.surname, email_address=user.email)
             db.dbInsert(session, enrollment)
-            await helper.create_personal_conversation(turn_context, user, f"Je bent toegevoegd aan de interesselijst voor '{committee.name}'", self._app_id)
+            try:
+                await helper.create_personal_conversation(turn_context, user, f"Je bent toegevoegd aan de interesselijst voor '{committee.name}'", self._app_id)
+            except:
+                pass
         session.close()
 
     # Command that releases a committee after visiting a mentor group.
