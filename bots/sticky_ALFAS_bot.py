@@ -309,7 +309,7 @@ class StickyALFASBot(TeamsActivityHandler):
             committee.occupied = False
             db.dbMerge(session, committee)
             # Get the visit and set it to finished.
-            visit = db.getFirst(session, db.Visit, 'committee_id', committee.committee_id)
+            visit = db.getActiveVisit(session, committee.committee_id)
             visit.finished = True
             db.dbMerge(session, visit)
             # Set mentor_group occupation to False
