@@ -246,7 +246,7 @@ class StickyALFASBot(TeamsActivityHandler):
         if db_user and db_group and db_user.mg_id == db_group.mg_id:
             # Check if command is correct
             try:
-                committee_name = turn_context.activity.text.split()[1]
+                committee_name = " ".join(turn_context.activity.text.split()[1:])
             except IndexError:
                 await turn_context.send_activity("Er ging iets intern mis bij de bot. Contacteer een introlid om het op te lossen.")
 
