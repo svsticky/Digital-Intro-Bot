@@ -436,10 +436,10 @@ class StickyALFASBot(TeamsActivityHandler):
 
         if db_user:
             try:
-                new_committee_name = turn_context.activity.text.split()[1]
-                password = turn_context.activity.text.split()[2]
+                new_committee_name = " ".join(turn_context.activity.text.split()[2:])
+                password = turn_context.activity.text.split()[1]
             except ValueError:
-                await turn_context.send_activity("Wrong command setup try: SwitchCommittee <committee_name> <password>")
+                await turn_context.send_activity("Wrong command setup try: SwitchCommittee <password> <committee_name>")
                 session.close()
                 return
             
@@ -452,6 +452,8 @@ class StickyALFASBot(TeamsActivityHandler):
                     await turn_context.send_activity("This committee does not exist.")
             else:
                 await turn_context.send_activity("Wrong password, you are not allowed to switch committees")
+                session.close()
+                return
         session.close()
         await turn_context.send_activity(f"You have succesfully switched to committee '{new_committee_name}'.")
 
