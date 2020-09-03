@@ -89,6 +89,14 @@ class StickyALFASBot(TeamsActivityHandler):
         if turn_context.activity.text.startswith("VeranderCommissie"):
             await self.switch_committee(turn_context)
             return
+        
+        if turn_context.activity.text == "MentorVrijgeven":
+            await self.release_mentor_group(turn_context)
+            return
+        
+        if turn_context.activity.text == "AllesVrijgeven":
+            await self.release_all(turn_context)
+            return
 
         #TODO: what to send if it is not a command?
         await turn_context.send_activity("Ik ken dit commando niet. Misschien heb je een typfout gemaakt?")
@@ -515,6 +523,7 @@ class StickyALFASBot(TeamsActivityHandler):
             await turn_context.send_activity("Done!")
         else:
             turn_context.send_activity("Nope")
+        session.close()
 
     #Helper functions!
     async def match_group_with_committee(self, turn_context, session, committee, mentor_group):
